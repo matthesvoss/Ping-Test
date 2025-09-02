@@ -1,11 +1,14 @@
 package de.matthesvoss.pingtest;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.Timer;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.awt.geom.Path2D;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.math.RoundingMode;
@@ -16,52 +19,40 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.prefs.Preferences;
-import javax.imageio.ImageIO;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.image.BufferedImage;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.DataFlavor;
 
 public class Main extends JPanel implements ActionListener {
     private static final long serialVersionUID = 1L;
+    private static final String PREF_DARK_MODE = "darkModeActive";
+    private static final int HOVER_RADIUS = 30;
     private final boolean isWindows;
     private final JFrame frame;
     private final JPanel root, controlsBar, leftGroup, centerGroup, rightGroup, centerWrapper;
-    private final JLabel hostLbl, countLbl, sentLbl, recvLbl, lostLbl, lossLbl, bestLbl, avrgLbl, medianLbl, worstLbl, lastLbl, elapsedLbl;
+    private final JLabel hostLabel, countLabel, sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel;
     private final JTextField host;
     private final JButton startStop, clear, copyResults, copyPings, screenshot, theme;
     private final JSpinner count;
-    private Process pingProcess;
-    private SwingWorker<Void, String> pingProcessInputStreamTask, pingProcessErrorStreamTask;
     private final ArrayList<Long> pingTimestamps = new ArrayList<>();
     private final ArrayList<Integer> pingValues = new ArrayList<>();
     private final Set<Integer> lossIndices = new HashSet<>();
     private final ArrayList<Integer> breakIndices = new ArrayList<>();
-    private int hoveredPingIndex = -1, sent, recv, best = Integer.MAX_VALUE, avrg, worst = -1, last;
-    private long runningSumOkPings;
-    private String lastHost = "";
     private final DecimalFormat lossFormat;
     private final DateFormat timestampFormat;
-    private boolean darkModeActive;
     private final Color BLUE = new Color(63, 72, 204);
     private final ArrayList<Long> startStopTimestamps = new ArrayList<>();
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
-    private volatile int runGeneration = 0; // guards against out-of-order updates when rapidly starting/stopping
-    private static final String PREF_DARK_MODE = "darkModeActive";
     private final Preferences prefs = Preferences.userNodeForPackage(Main.class);
-    // Hover radius and last-known plot transform (to avoid recomputing font metrics during mouse move)
-    private static final int HOVER_RADIUS = 30;
-    private int plotLeft, plotTop, plotW, plotH;
-    private long startTs = 0L, totalTime = 1L;
-
-    // Median support: two-heaps (only successful pings, like average)
     private final PriorityQueue<Integer> medianLow = new PriorityQueue<>(Collections.reverseOrder());
     private final PriorityQueue<Integer> medianHigh = new PriorityQueue<>();
+    private Process pingProcess;
+    private SwingWorker<Void, String> pingProcessInputStreamTask, pingProcessErrorStreamTask;
+    private int hoveredPingIndex = -1, sent, received, best = Integer.MAX_VALUE, average, worst = -1, last;
+    private long runningSumOkPings;
+    private String lastHost = "";
+    private boolean darkModeActive;
+    private volatile int runGeneration = 0; // Guards against out-of-order updates when rapidly starting/stopping
+    private int plotLeft, plotTop, plotW, plotH;
+    private long startTs = 0L, totalTime = 1L;
     private int median;
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(Main::new);
-    }
 
     private Main() {
         isWindows = System.getProperty("os.name").toLowerCase().contains("win");
@@ -164,9 +155,9 @@ public class Main extends JPanel implements ActionListener {
         lossFormat = new DecimalFormat("0.00");
         lossFormat.setRoundingMode(RoundingMode.HALF_UP);
 
-        hostLbl = new JLabel("Host:");
+        hostLabel = new JLabel("Host:");
         host = new JTextField("google.de", 20);
-        countLbl = new JLabel("Count (0=infinity):");
+        countLabel = new JLabel("Count (0=infinity):");
         count = new JSpinner(new SpinnerNumberModel(0, 0, 86400, 1));
         startStop = new JButton("Start");
         startStop.addActionListener(this);
@@ -175,16 +166,16 @@ public class Main extends JPanel implements ActionListener {
         clear = new JButton("Clear");
         clear.addActionListener(this);
         clear.setFocusable(false);
-        sentLbl = new JLabel("Sent: ");
-        recvLbl = new JLabel("Recv: ");
-        lostLbl = new JLabel("Lost: ");
-        lossLbl = new JLabel("Loss: %");
-        bestLbl = new JLabel("Best: ms");
-        avrgLbl = new JLabel("Avrg: ms");
-        medianLbl = new JLabel("Median: ms");
-        worstLbl = new JLabel("Worst: ms");
-        lastLbl = new JLabel("Last: ms");
-        elapsedLbl = new JLabel("Elapsed: 00:00:00");
+        sentLabel = new JLabel("Sent: ");
+        receivedLabel = new JLabel("Received: ");
+        lostLabel = new JLabel("Lost: ");
+        lossLabel = new JLabel("Loss: %");
+        bestLabel = new JLabel("Best: ms");
+        averageLabel = new JLabel("Average: ms");
+        medianLabel = new JLabel("Median: ms");
+        worstLabel = new JLabel("Worst: ms");
+        lastLabel = new JLabel("Last: ms");
+        elapsedLabel = new JLabel("Elapsed: 00:00:00");
         copyResults = new JButton("Copy Results");
         copyResults.addActionListener(this);
         copyResults.setFocusable(false);
@@ -200,24 +191,24 @@ public class Main extends JPanel implements ActionListener {
 
         // Build three groups: LEFT (FlowLayout.LEFT), CENTER (WrapLayout.CENTER), RIGHT (FlowLayout.RIGHT)
         leftGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        leftGroup.add(hostLbl);
+        leftGroup.add(hostLabel);
         leftGroup.add(host);
-        leftGroup.add(countLbl);
+        leftGroup.add(countLabel);
         leftGroup.add(count);
         leftGroup.add(startStop);
         leftGroup.add(clear);
 
         centerGroup = new JPanel(new WrapLayout(FlowLayout.CENTER, 6, 0));
-        centerGroup.add(sentLbl);
-        centerGroup.add(recvLbl);
-        centerGroup.add(lostLbl);
-        centerGroup.add(lossLbl);
-        centerGroup.add(bestLbl);
-        centerGroup.add(avrgLbl);
-        centerGroup.add(medianLbl);
-        centerGroup.add(worstLbl);
-        centerGroup.add(lastLbl);
-        centerGroup.add(elapsedLbl);
+        centerGroup.add(sentLabel);
+        centerGroup.add(receivedLabel);
+        centerGroup.add(lostLabel);
+        centerGroup.add(lossLabel);
+        centerGroup.add(bestLabel);
+        centerGroup.add(averageLabel);
+        centerGroup.add(medianLabel);
+        centerGroup.add(worstLabel);
+        centerGroup.add(lastLabel);
+        centerGroup.add(elapsedLabel);
 
         rightGroup = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
         rightGroup.add(copyResults);
@@ -253,11 +244,15 @@ public class Main extends JPanel implements ActionListener {
         root.add(controlsBar, BorderLayout.NORTH);
         root.add(this, BorderLayout.CENTER);
         frame.setContentPane(root);
-        // load and apply persisted theme
+        // Load and apply persisted theme
         darkModeActive = prefs.getBoolean(PREF_DARK_MODE, false);
         reloadTheme();
 
         frame.setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(Main::new);
     }
 
     private void showInfoDialog(String message, String title) {
@@ -268,114 +263,111 @@ public class Main extends JPanel implements ActionListener {
         JOptionPane.showMessageDialog(frame, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
-    private class PingProcessInputStreamTask extends SwingWorker<Void, String> {
-        private final Process procRef;
-        private final int generation;
-
-        private PingProcessInputStreamTask(Process procRef, int generation) {
-            this.procRef = procRef;
-            this.generation = generation;
-        }
-
-        @Override
-        protected Void doInBackground() {
-            try (Scanner s = new Scanner(procRef.getInputStream(), Charset.defaultCharset().name())) {
-                while (!isCancelled() && s.hasNext()) {
-                    String input = s.nextLine();
-                    publish(input);
-                }
+    private int parseLatency(String line) {
+        try {
+            if (line.contains("Zeit")) { // Windows de
+                return Integer.parseInt(line.split("Zeit")[1].split("ms")[0].substring(1));
             }
-            return null;
-        }
-
-        @Override
-        protected void process(List<String> inputChunks) {
-            if (generation != runGeneration) return;
-            for (String input : inputChunks) {
-                // Windows success lines ("Antwort", "Reply") and Linux/Unix success lines (contain "time=")
-                if (input.startsWith("Antwort") || input.startsWith("Reply") || input.contains("time=")) {
-                    sent++;
-                    sentLbl.setText("Sent: " + sent);
-                    recv++;
-                    recvLbl.setText("Recv: " + recv);
-                    updateLossLbls();
-
-                    // Extract latency in ms for Windows (Zeit/time) or Linux (time=XX ms)
-                    try {
-                        if (input.contains("Zeit")) {
-                            last = Integer.parseInt(input.split("Zeit")[1].split("ms")[0].substring(1));
-                        } else if (input.contains("time=")) {
-                            // Linux typical format: "... time=12.3 ms"
-                            String msStr = input.split("time=")[1].split(" ")[0];
-                            // Truncate to integer milliseconds for consistency
-                            last = (int) Math.round(Double.parseDouble(msStr));
-                        } else if (input.contains("time")) {
-                            last = Integer.parseInt(input.split("time")[1].split("ms")[0].substring(1));
-                        }
-                    } catch (Exception ignore) {
-                        // If parsing fails, skip updating last; still record 0 to keep alignment
-                        last = 0;
-                    }
-
-                    pingTimestamps.add(System.currentTimeMillis());
-                    pingValues.add(last);
-
-                    if (last < best) {
-                        best = last;
-                        bestLbl.setText("Best: " + best + "ms");
-                    }
-                    if (last > worst) {
-                        worst = last;
-                        worstLbl.setText("Worst: " + worst + "ms");
-                    }
-
-                    runningSumOkPings += last;
-                    avrg = (int) Math.round((double) runningSumOkPings / recv);
-                    avrgLbl.setText("Avrg: " + avrg + "ms");
-
-                    medianAdd(last);
-                    medianLbl.setText("Median: " + median + "ms");
-
-                    lastLbl.setText("Last: " + last + "ms");
-                    repaint();
-                } else if (
-                        // Windows timeouts and errors
-                        input.startsWith("Zeitüberschreitung") || input.startsWith("PING: Fehler") || input.startsWith("Request timed out")
-                        // Linux common timeouts/unreachable
-                        || input.toLowerCase().contains("timeout")
-                        || input.toLowerCase().contains("unreachable")
-                        || input.toLowerCase().contains("time to live exceeded")
-                ) {
-                    sent++;
-                    sentLbl.setText("Sent: " + sent);
-                    lossIndices.add(pingTimestamps.size());
-                    updateLossLbls();
-                    pingTimestamps.add(System.currentTimeMillis());
-                    pingValues.add(0);
-                    repaint();
-                } else if (input.startsWith("Ping-Anforderung") || input.startsWith("Ping request")) {
-                    showErrorDialog(input);
-                }
+            if (line.contains("time=")) { // Linux
+                String msStr = line.split("time=")[1].split(" ")[0];
+                return (int) Math.round(Double.parseDouble(msStr));
             }
+            if (line.contains("time")) { // Windows en
+                return Integer.parseInt(line.split("time")[1].split("ms")[0].substring(1));
+            }
+        } catch (Exception ignore) {
         }
+        return 0;
+    }
 
-        private void updateLossLbls() {
-            int lost = sent - recv;
-            lostLbl.setText("Lost: " + lost);
-            double loss = (sent > 0) ? ((double) lost / sent * 100d) : 0d;
-            lossLbl.setText("Loss: " + lossFormat.format(loss) + "%");
+    private void updateLossLabels() {
+        int lost = sent - received;
+        lostLabel.setText("Lost: " + lost);
+        double loss = (sent > 0) ? ((double) lost / sent * 100d) : 0d;
+        lossLabel.setText("Loss: " + lossFormat.format(loss) + "%");
+    }
+
+    private void resetLabels() {
+        sentLabel.setText("Sent: ");
+        receivedLabel.setText("Received: ");
+        lostLabel.setText("Lost: ");
+        lossLabel.setText("Loss: %");
+        bestLabel.setText("Best: ms");
+        averageLabel.setText("Average: ms");
+        medianLabel.setText("Median: ms");
+        worstLabel.setText("Worst: ms");
+        lastLabel.setText("Last: ms");
+        elapsedLabel.setText("Elapsed: 00:00:00");
+    }
+
+    private void resetStats() {
+        pingTimestamps.clear();
+        pingValues.clear();
+        breakIndices.clear();
+        lossIndices.clear();
+        hoveredPingIndex = -1;
+        sent = 0;
+        received = 0;
+        best = Integer.MAX_VALUE;
+        average = 0;
+        worst = -1;
+        last = 0;
+        runningSumOkPings = 0;
+        medianLow.clear();
+        medianHigh.clear();
+        median = 0;
+        elapsedTimer.stop();
+        startStopTimestamps.clear();
+        repaint();
+    }
+
+    private void copyResultsToClipboard() {
+        try {
+            String results = String.join("\t", new String[]{
+                    sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(), lossLabel.getText(),
+                    bestLabel.getText(), averageLabel.getText(), medianLabel.getText(), worstLabel.getText(),
+                    lastLabel.getText(), elapsedLabel.getText()
+            });
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(results), null);
+        } catch (Exception ex) {
+            showErrorDialog("Failed to copy results to clipboard: " + ex.getMessage());
         }
+    }
 
-        @Override
-        protected void done() {
-            if (generation != runGeneration) return;
-            startStopTimestamps.add(System.currentTimeMillis());
-            elapsedTimer.stop();
-            updateElapsedLabel();
-
-            breakIndices.add(pingTimestamps.size());
-            startStop.setText("Start");
+    private void copyPingsToClipboard() {
+        try {
+            ArrayList<String> lines = new ArrayList<>();
+            lines.add(String.join("\t", new String[]{
+                    sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(), lossLabel.getText(),
+                    bestLabel.getText(), averageLabel.getText(), medianLabel.getText(), worstLabel.getText(),
+                    lastLabel.getText(), elapsedLabel.getText()
+            }));
+            for (int i = 0; i < pingTimestamps.size(); i++) {
+                String value = lossIndices.contains(i) ? "Request timed out" : pingValues.get(i) + "ms";
+                lines.add(timestampFormat.format(new Date(pingTimestamps.get(i))) + "\t" + value);
+            }
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(String.join("\n", lines)), null);
+        } catch (Exception ex) {
+            showErrorDialog("Failed to copy pings to clipboard: " + ex.getMessage());
         }
+    }
+
+    private void startPinging() {
+        if (!lastHost.isEmpty() && !host.getText().equals(lastHost)) {
+            clear.doClick();
+        }
+        lastHost = host.getText();
+        startStopTimestamps.add(System.currentTimeMillis());
+        elapsedTimer.start();
+        startPingProcess();
+    }
+
+    private void stopPinging() {
+        startStopTimestamps.add(System.currentTimeMillis());
+        elapsedTimer.stop();
+        updateElapsedLabel();
+        breakIndices.add(pingTimestamps.size());
+        stopPingProcess();
     }
 
     private void medianAdd(int value) {
@@ -399,108 +391,25 @@ public class Main extends JPanel implements ActionListener {
         }
     }
 
-    private class PingProcessErrorStreamTask extends SwingWorker<Void, String> {
-        private final ArrayList<String> errorLines = new ArrayList<>();
-        private final Process procRef;
-        private final int generation;
-
-        private PingProcessErrorStreamTask(Process procRef, int generation) {
-            this.procRef = procRef;
-            this.generation = generation;
-        }
-
-        @Override
-        protected Void doInBackground() {
-            try (Scanner s = new Scanner(procRef.getErrorStream(), Charset.defaultCharset().name())) {
-                while (!isCancelled() && s.hasNext()) {
-                    errorLines.add(s.nextLine());
-                }
-            }
-            return null;
-        }
-
-        @Override
-        protected void done() {
-            if (generation != runGeneration) return;
-            if (!errorLines.isEmpty()) {
-                showErrorDialog(String.join("\n", errorLines));
-            }
-        }
-    }
-
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource().equals(startStop)) {
             if (startStop.getText().equals("Start")) {
-                if (!lastHost.isEmpty() && !host.getText().equals(lastHost)) {
-                    clear.doClick();
-                }
-                lastHost = host.getText();
-
-                startStopTimestamps.add(System.currentTimeMillis());
-                elapsedTimer.start();
-
-                startPingProcess();
+                startPinging();
                 startStop.setText("Stop");
             } else {
-                runGeneration++;
-
-                startStopTimestamps.add(System.currentTimeMillis());
-                elapsedTimer.stop();
-                updateElapsedLabel();
-
-                breakIndices.add(pingTimestamps.size());
-                stopPingProcess();
+                stopPinging();
                 startStop.setText("Start");
             }
         } else if (e.getSource().equals(clear)) {
             stopPingProcess();
+            resetStats();
+            resetLabels();
             startStop.setText("Start");
-            sentLbl.setText("Sent: ");
-            recvLbl.setText("Recv: ");
-            lostLbl.setText("Lost: ");
-            lossLbl.setText("Loss: %");
-            bestLbl.setText("Best: ms");
-            avrgLbl.setText("Avrg: ms");
-            medianLbl.setText("Median: ms");
-            worstLbl.setText("Worst: ms");
-            lastLbl.setText("Last: ms");
-            pingTimestamps.clear();
-            pingValues.clear();
-            breakIndices.clear();
-            lossIndices.clear();
-            hoveredPingIndex = -1;
-            sent = 0;
-            recv = 0;
-            best = Integer.MAX_VALUE;
-            avrg = 0;
-            worst = -1;
-            last = 0;
-            runningSumOkPings = 0;
-            medianLow.clear();
-            medianHigh.clear();
-            median = 0;
-            elapsedTimer.stop();
-            startStopTimestamps.clear();
-            elapsedLbl.setText("Elapsed: 00:00:00");
-            repaint();
         } else if (e.getSource().equals(copyResults)) {
-            try {
-                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(String.join("\t", new String[]{sentLbl.getText(), recvLbl.getText(), lostLbl.getText(), lossLbl.getText(), bestLbl.getText(), avrgLbl.getText(), medianLbl.getText(), worstLbl.getText(), lastLbl.getText(), elapsedLbl.getText()})), null);
-            } catch (Exception ex) {
-                showErrorDialog("Failed to copy results to clipboard: " + ex.getMessage());
-            }
+            copyResultsToClipboard();
         } else if (e.getSource().equals(copyPings)) {
-            try {
-                ArrayList<String> lines = new ArrayList<>();
-                lines.add(String.join("\t", new String[]{sentLbl.getText(), recvLbl.getText(), lostLbl.getText(), lossLbl.getText(), bestLbl.getText(), avrgLbl.getText(), medianLbl.getText(), worstLbl.getText(), lastLbl.getText(), elapsedLbl.getText()}));
-                for (int i = 0; i < pingTimestamps.size(); i++) {
-                    lines.add(timestampFormat.format(new Date(pingTimestamps.get(i))) + "\t" + (lossIndices.contains(i) ? "Request timed out" : pingValues.get(i) + "ms"));
-                }
-                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(String.join("\n", lines)), null);
-            } catch (Exception ex) {
-                showErrorDialog("Failed to copy pings to clipboard: " + ex.getMessage());
-            }
+            copyPingsToClipboard();
         } else if (e.getSource().equals(screenshot)) {
             saveScreenshot();
         } else if (e.getSource().equals(theme)) {
@@ -544,16 +453,25 @@ public class Main extends JPanel implements ActionListener {
     }
 
     private void stopPingProcess() {
+        runGeneration++;
         if (pingProcess != null) {
             try {
                 // Request graceful shutdown of the specific process
                 pingProcess.destroy();
-                System.out.println("destroy (graceful requested)");
 
                 // Proactively close streams to unblock SwingWorkers promptly
-                try { pingProcess.getInputStream().close(); } catch (IOException ignored) {}
-                try { pingProcess.getErrorStream().close(); } catch (IOException ignored) {}
-                try { pingProcess.getOutputStream().close(); } catch (IOException ignored) {}
+                try {
+                    pingProcess.getInputStream().close();
+                } catch (IOException ignored) {
+                }
+                try {
+                    pingProcess.getErrorStream().close();
+                } catch (IOException ignored) {
+                }
+                try {
+                    pingProcess.getOutputStream().close();
+                } catch (IOException ignored) {
+                }
 
                 // Asynchronously enforce after a short delay if still alive
                 final Process procRef = pingProcess;
@@ -565,7 +483,6 @@ public class Main extends JPanel implements ActionListener {
                     }
                     try {
                         if (procRef != null && procRef.isAlive()) {
-                            System.out.println("destroyForcibly (after delay)");
                             try {
                                 // On Windows, also ensure any lingering ping.exe is terminated
                                 if (isWindows) {
@@ -603,18 +520,18 @@ public class Main extends JPanel implements ActionListener {
         Color bar = darkModeActive ? Color.BLACK : Color.WHITE;
         Color divider = darkModeActive ? Color.WHITE : Color.BLACK;
 
-        hostLbl.setForeground(foreground);
-        countLbl.setForeground(foreground);
-        sentLbl.setForeground(foreground);
-        recvLbl.setForeground(foreground);
-        lostLbl.setForeground(foreground);
-        lossLbl.setForeground(foreground);
-        bestLbl.setForeground(foreground);
-        avrgLbl.setForeground(foreground);
-        medianLbl.setForeground(foreground);
-        worstLbl.setForeground(foreground);
-        lastLbl.setForeground(foreground);
-        elapsedLbl.setForeground(foreground);
+        hostLabel.setForeground(foreground);
+        countLabel.setForeground(foreground);
+        sentLabel.setForeground(foreground);
+        receivedLabel.setForeground(foreground);
+        lostLabel.setForeground(foreground);
+        lossLabel.setForeground(foreground);
+        bestLabel.setForeground(foreground);
+        averageLabel.setForeground(foreground);
+        medianLabel.setForeground(foreground);
+        worstLabel.setForeground(foreground);
+        lastLabel.setForeground(foreground);
+        elapsedLabel.setForeground(foreground);
         startStop.setForeground(foreground);
         startStop.setBackground(background);
         clear.setForeground(foreground);
@@ -680,7 +597,7 @@ public class Main extends JPanel implements ActionListener {
             if (running) {
                 elapsed += System.currentTimeMillis() - startStopTimestamps.get(startStopTimestamps.size() - 1);
             }
-            elapsedLbl.setText("Elapsed: " + formatTime(elapsed));
+            elapsedLabel.setText("Elapsed: " + formatTime(elapsed));
         }
     }
 
@@ -790,13 +707,13 @@ public class Main extends JPanel implements ActionListener {
             g2d.drawLine(plotLeft, plotBottom, plotRight, plotBottom);
         }
 
-        // draw pings
+        // Draw pings
         if (pingTimestamps.isEmpty()) {
             return;
         }
         // Use LOD if there are far more points than pixels
         int n = pingTimestamps.size();
-        boolean useLOD = plotW > 0 && n > plotW * 2; // threshold x2 pixels
+        boolean useLOD = plotW > 0 && n > plotW * 2; // Threshold x2 pixels
         final int tickH = Math.max(4, Math.min(10, plotH / 30));
 
         if (useLOD) {
@@ -876,8 +793,8 @@ public class Main extends JPanel implements ActionListener {
         } else {
             // Exact Path2D polyline (no decimation)
             Path2D pingPath = new Path2D.Double();
-            boolean drawing = false; // whether we are currently inside a run of non-timeout points
-            int runLen = 0;          // length of the current run (to detect singletons)
+            boolean drawing = false; // Whether we are currently inside a run of non-timeout points
+            int runLen = 0;          // Length of the current run (to detect singletons)
             int lastX = 0, lastY = 0;
 
             int r = 3;
@@ -891,7 +808,7 @@ public class Main extends JPanel implements ActionListener {
                 y = Math.max(plotTop, Math.min(plotBottom, y));
 
                 boolean timeout = lossIndices.contains(i);
-                boolean breakHere = breakIndices.contains(i); // boundary before current point
+                boolean breakHere = breakIndices.contains(i); // Boundary before current point
 
                 // If a break or timeout occurs, close any ongoing run first
                 if (timeout || breakHere) {
@@ -909,7 +826,7 @@ public class Main extends JPanel implements ActionListener {
                         g2d.setColor(Color.RED);
                         g2d.setStroke(new BasicStroke(2f));
                         g2d.drawLine(x, plotBottom, x, plotBottom - tickH);
-                        continue; // skip adding this point to the path
+                        continue; // Skip adding this point to the path
                     }
                     // If it was a break (not timeout), we still need to start a fresh segment below
                 }
@@ -938,7 +855,7 @@ public class Main extends JPanel implements ActionListener {
             g2d.draw(pingPath);
         }
 
-        // draw tooltip using hovered index
+        // Draw tooltip using hovered index
         if (hoveredPingIndex != -1) {
             long ts = pingTimestamps.get(hoveredPingIndex);
             int val = pingValues.get(hoveredPingIndex);
@@ -1005,120 +922,119 @@ public class Main extends JPanel implements ActionListener {
             showErrorDialog("Failed to save screenshot: " + ex.getMessage());
         }
     }
-}
 
-// Transferable for copying images to clipboard
-class TransferableImage implements Transferable {
-    private final Image image;
-    private static final DataFlavor[] FLAVORS = new DataFlavor[]{DataFlavor.imageFlavor};
+    private class PingProcessInputStreamTask extends SwingWorker<Void, String> {
+        private final Process procRef;
+        private final int generation;
 
-    TransferableImage(Image image) {
-        this.image = image;
-    }
-
-    @Override
-    public DataFlavor[] getTransferDataFlavors() {
-        return FLAVORS.clone();
-    }
-
-    @Override
-    public boolean isDataFlavorSupported(DataFlavor flavor) {
-        return DataFlavor.imageFlavor.equals(flavor);
-    }
-
-    @Override
-    public Object getTransferData(DataFlavor flavor) {
-        if (!isDataFlavorSupported(flavor)) {
-            throw new UnsupportedOperationException("Unsupported flavor: " + flavor);
+        private PingProcessInputStreamTask(Process procRef, int generation) {
+            this.procRef = procRef;
+            this.generation = generation;
         }
-        return image;
-    }
-}
 
-
-// Add a wrapping layout that computes preferred size using the parent's current width.
-// Based on the well-known approach by Rob Camick.
-class WrapLayout extends FlowLayout {
-    public WrapLayout(int align, int hgap, int vgap) {
-        super(align, hgap, vgap);
-    }
-
-    @Override
-    public Dimension preferredLayoutSize(Container target) {
-        return layoutSize(target, true);
-    }
-
-    @Override
-    public Dimension minimumLayoutSize(Container target) {
-        Dimension minimum = layoutSize(target, false);
-        minimum.width -= (getHgap() + 1);
-        return minimum;
-    }
-
-    private Dimension layoutSize(Container target, boolean preferred) {
-        synchronized (target.getTreeLock()) {
-            int hgap = getHgap();
-            int vgap = getVgap();
-
-            Insets insets = target.getInsets();
-            int availableWidth;
-
-            // Use the parent's width (current allocated width) to decide wrapping.
-            Container parent = target.getParent();
-            if (parent != null) {
-                int parentWidth = parent.getWidth();
-                // Account for parent's insets if any
-                Insets pin = parent.getInsets();
-                if (pin != null) {
-                    parentWidth -= (pin.left + pin.right);
-                }
-                availableWidth = parentWidth - (insets.left + insets.right + hgap * 2);
-            } else {
-                availableWidth = target.getWidth() - (insets.left + insets.right + hgap * 2);
-            }
-
-            // Before first layout pass widths can be 0; avoid premature wrapping
-            if (availableWidth <= 0) {
-                availableWidth = Integer.MAX_VALUE / 4;
-            }
-
-            Dimension dim = new Dimension(0, 0);
-            int rowWidth = 0;
-            int rowHeight = 0;
-
-            int count = target.getComponentCount();
-            for (int i = 0; i < count; i++) {
-                Component m = target.getComponent(i);
-                if (!m.isVisible()) continue;
-
-                Dimension d = preferred ? m.getPreferredSize() : m.getMinimumSize();
-
-                if (rowWidth == 0 || rowWidth + d.width <= availableWidth) {
-                    if (rowWidth > 0) rowWidth += hgap;
-                    rowWidth += d.width;
-                    rowHeight = Math.max(rowHeight, d.height);
-                } else {
-                    // complete current row
-                    dim.width = Math.max(dim.width, rowWidth);
-                    if (dim.height > 0) dim.height += vgap;
-                    dim.height += rowHeight;
-
-                    // start new row
-                    rowWidth = d.width;
-                    rowHeight = d.height;
+        @Override
+        protected Void doInBackground() {
+            try (Scanner s = new Scanner(procRef.getInputStream(), Charset.defaultCharset().name())) {
+                while (!isCancelled() && s.hasNext()) {
+                    String input = s.nextLine();
+                    publish(input);
                 }
             }
+            return null;
+        }
 
-            // add the last row
-            dim.width = Math.max(dim.width, rowWidth);
-            if (rowHeight > 0) {
-                if (dim.height > 0) dim.height += vgap;
-                dim.height += rowHeight;
+        @Override
+        protected void process(List<String> inputChunks) {
+            if (generation != runGeneration) return;
+            for (String input : inputChunks) {
+                // Windows success lines ("Antwort", "Reply") and Linux/Unix success lines (contains "time=")
+                if (input.startsWith("Antwort") || input.startsWith("Reply") || input.contains("time=")) {
+                    sent++;
+                    sentLabel.setText("Sent: " + sent);
+                    received++;
+                    receivedLabel.setText("Received: " + received);
+                    updateLossLabels();
+
+                    last = parseLatency(input);
+
+                    pingTimestamps.add(System.currentTimeMillis());
+                    pingValues.add(last);
+
+                    if (last < best) {
+                        best = last;
+                        bestLabel.setText("Best: " + best + "ms");
+                    }
+                    if (last > worst) {
+                        worst = last;
+                        worstLabel.setText("Worst: " + worst + "ms");
+                    }
+
+                    runningSumOkPings += last;
+                    average = (int) Math.round((double) runningSumOkPings / received);
+                    averageLabel.setText("Average: " + average + "ms");
+
+                    medianAdd(last);
+                    medianLabel.setText("Median: " + median + "ms");
+
+                    lastLabel.setText("Last: " + last + "ms");
+                    repaint();
+                } else if (
+                        input.startsWith("Zeitüberschreitung") || input.startsWith("PING: Fehler") || input.startsWith("Request timed out")
+                                || input.toLowerCase().contains("timeout")
+                                || input.toLowerCase().contains("unreachable")
+                                || input.toLowerCase().contains("time to live exceeded")
+                ) {
+                    sent++;
+                    sentLabel.setText("Sent: " + sent);
+                    lossIndices.add(pingTimestamps.size());
+                    updateLossLabels();
+                    pingTimestamps.add(System.currentTimeMillis());
+                    pingValues.add(0);
+                    repaint();
+                } else if (input.startsWith("Ping-Anforderung") || input.startsWith("Ping request")) {
+                    showErrorDialog(input);
+                }
             }
+        }
 
-            dim.width += insets.left + insets.right + hgap * 2;
-            dim.height += insets.top + insets.bottom + vgap * 2;
-            return dim;
+        @Override
+        protected void done() {
+            if (generation != runGeneration) return;
+            startStopTimestamps.add(System.currentTimeMillis());
+            elapsedTimer.stop();
+            updateElapsedLabel();
+
+            breakIndices.add(pingTimestamps.size());
+            startStop.setText("Start");
+        }
+    }
+
+    private class PingProcessErrorStreamTask extends SwingWorker<Void, String> {
+        private final ArrayList<String> errorLines = new ArrayList<>();
+        private final Process procRef;
+        private final int generation;
+
+        private PingProcessErrorStreamTask(Process procRef, int generation) {
+            this.procRef = procRef;
+            this.generation = generation;
+        }
+
+        @Override
+        protected Void doInBackground() {
+            try (Scanner s = new Scanner(procRef.getErrorStream(), Charset.defaultCharset().name())) {
+                while (!isCancelled() && s.hasNext()) {
+                    errorLines.add(s.nextLine());
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void done() {
+            if (generation != runGeneration) return;
+            if (!errorLines.isEmpty()) {
+                showErrorDialog(String.join("\n", errorLines));
+            }
         }
     }
 }
