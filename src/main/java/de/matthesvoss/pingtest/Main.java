@@ -18,6 +18,7 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
 
 public class Main extends JPanel implements ActionListener {
@@ -53,15 +54,16 @@ public class Main extends JPanel implements ActionListener {
     private int plotLeft, plotTop, plotW, plotH;
     private long startTs = 0L, totalTime = 1L;
     private int median;
+    // TODO: screenshot menu save or clipboard and save, separate labels further, add light colors to label backgrounds, add last ping to right side, end of ping spikes detection, change dark mode white to darker color
 
     private Main() {
         isWindows = System.getProperty("os.name").toLowerCase().contains("win");
 
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception ex) {
-            showErrorDialog("Failed to set Look & Feel: " + ex.getMessage());
-        }
+//        try {
+//            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+//        } catch (Exception ex) {
+//            showErrorDialog("Failed to set Look & Feel: " + ex.getMessage());
+//        }
 
         frame = new JFrame("Ping Test");
         frame.setSize(1600, 900);
@@ -256,26 +258,30 @@ public class Main extends JPanel implements ActionListener {
     }
 
     private void showInfoDialog(String message, String title) {
-        JOptionPane.showMessageDialog(frame, message, title, JOptionPane.INFORMATION_MESSAGE);
+        SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(frame, message, title, JOptionPane.INFORMATION_MESSAGE)
+        );
     }
 
     private void showErrorDialog(String message) {
-        JOptionPane.showMessageDialog(frame, message, "Error", JOptionPane.ERROR_MESSAGE);
+        SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(frame, message, "Error", JOptionPane.ERROR_MESSAGE)
+        );
     }
 
     private int parseLatency(String line) {
         try {
-            if (line.contains("Zeit")) { // Windows de
+            if (isWindows && line.contains("Zeit")) { // Windows de
                 return Integer.parseInt(line.split("Zeit")[1].split("ms")[0].substring(1));
             }
-            if (line.contains("time=")) { // Linux
+            if (isWindows && line.contains("time")) { // Windows en
+                return Integer.parseInt(line.split("time")[1].split("ms")[0].substring(1));
+            }
+            if (!isWindows && line.contains("time=")) { // Linux
                 String msStr = line.split("time=")[1].split(" ")[0];
                 return (int) Math.round(Double.parseDouble(msStr));
             }
-            if (line.contains("time")) { // Windows en
-                return Integer.parseInt(line.split("time")[1].split("ms")[0].substring(1));
-            }
-        } catch (Exception ignore) {
+        } catch (Exception ignored) {
         }
         return 0;
     }
@@ -423,21 +429,23 @@ public class Main extends JPanel implements ActionListener {
         try {
             int n = (int) count.getValue();
 
+            ProcessBuilder pb;
             if (isWindows) {
                 // Windows: -t for infinite, -n for count
                 if (n == 0) {
-                    pingProcess = new ProcessBuilder("cmd", "/c", "ping", "-t", host.getText()).start();
+                    pb = new ProcessBuilder("ping", "-t", host.getText());
                 } else {
-                    pingProcess = new ProcessBuilder("cmd", "/c", "ping", "-n", String.valueOf(n), host.getText()).start();
+                    pb = new ProcessBuilder("ping", "-n", String.valueOf(n), host.getText());
                 }
             } else {
                 // Linux/Unix: continuous by default, -c for count
                 if (n == 0) {
-                    pingProcess = new ProcessBuilder("ping", host.getText()).start();
+                    pb = new ProcessBuilder("ping", host.getText());
                 } else {
-                    pingProcess = new ProcessBuilder("ping", "-c", String.valueOf(n), host.getText()).start();
+                    pb = new ProcessBuilder("ping", "-c", String.valueOf(n), host.getText());
                 }
             }
+            pingProcess = pb.start();
 
             // Bump generation to invalidate any previous workers' UI updates
             runGeneration++;
@@ -477,24 +485,15 @@ public class Main extends JPanel implements ActionListener {
                 final Process procRef = pingProcess;
                 new Thread(() -> {
                     try {
-                        // Wait a bit to allow graceful shutdown to complete
-                        Thread.sleep(2000);
-                    } catch (InterruptedException ignored) {
-                    }
-                    try {
-                        if (procRef != null && procRef.isAlive()) {
-                            try {
-                                // On Windows, also ensure any lingering ping.exe is terminated
-                                if (isWindows) {
-                                    Runtime.getRuntime().exec("taskkill /F /IM PING.exe");
-                                }
-                            } catch (IOException ioe) {
-                                // Fall back to Java's force in any case
+                        // Wait a bit for graceful shutdown
+                        if (procRef != null) {
+                            boolean exited = procRef.waitFor(2000, TimeUnit.MILLISECONDS);
+                            if (!exited && procRef.isAlive()) {
+                                procRef.destroyForcibly();
                             }
-                            procRef.destroyForcibly();
                         }
                     } catch (Exception ex) {
-                        SwingUtilities.invokeLater(() -> showErrorDialog("Failed to forcibly stop ping process: " + ex.getMessage()));
+                        showErrorDialog("Failed to forcibly stop ping process: " + ex.getMessage());
                     }
                 }, "PingStopEnforcer").start();
             } catch (Exception ex) {
@@ -991,7 +990,7 @@ public class Main extends JPanel implements ActionListener {
                     pingTimestamps.add(System.currentTimeMillis());
                     pingValues.add(0);
                     repaint();
-                } else if (input.startsWith("Ping-Anforderung") || input.startsWith("Ping request")) {
+                } else if (input.startsWith("Ping-Anforderung") || input.startsWith("Ping request") || input.contains("Name or service not known")) {
                     showErrorDialog(input);
                 }
             }

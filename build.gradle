@@ -1,0 +1,35 @@
+plugins {
+    id 'idea'
+    id 'java'
+    id 'application'
+}
+
+group = 'de.matthesvoss'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
+application {
+    mainClass.set('de.matthesvoss.pingtest.Main')
+}
+
+jar {
+    manifest {
+        attributes "Main-Class": "de.matthesvoss.pingtest.Main"
+    }
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
