@@ -1,5 +1,9 @@
 package de.matthesvoss.pingtest;
 
+import com.formdev.flatlaf.FlatLightLaf;
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLaf;
+
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.Timer;
@@ -38,7 +42,6 @@ public class Main extends JPanel implements ActionListener {
     private final ArrayList<Integer> breakIndices = new ArrayList<>();
     private final DecimalFormat lossFormat;
     private final DateFormat timestampFormat;
-    private final Color BLUE = new Color(63, 72, 204);
     private final ArrayList<Long> startStopTimestamps = new ArrayList<>();
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
     private final Preferences prefs = Preferences.userNodeForPackage(Main.class);
@@ -54,16 +57,28 @@ public class Main extends JPanel implements ActionListener {
     private int plotLeft, plotTop, plotW, plotH;
     private long startTs = 0L, totalTime = 1L;
     private int median;
-    // TODO: screenshot menu save or clipboard and save, separate labels further, add light colors to label backgrounds, add last ping to right side, end of ping spikes detection, change dark mode white to darker color
+    // TODO: screenshot menu save or clipboard and save, separate labels further, add light colors to label backgrounds, add last ping to right side, end of ping spikes detection, change dark mode white to darker color, dont stop on clear
+
+    private Color fgColor;          // primary foreground
+    private Color gridColor;        // border/grid
+    private Color seperatorColor;         // separator
+    private Color accentColor;      // main accent for lines
+    private Color dangerColor;      // timeouts / error ticks
+    // Derived from the above to avoid recomputation in paint
+    private Color axisColor;        // axis lines
+    private Color stoppedBandColor; // shaded stopped sections
+    private Color dividerColor;     // vertical divider lines
 
     private Main() {
         isWindows = System.getProperty("os.name").toLowerCase().contains("win");
 
-//        try {
-//            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-//        } catch (Exception ex) {
-//            showErrorDialog("Failed to set Look & Feel: " + ex.getMessage());
-//        }
+        // Initialize FlatLaf based on persisted preference before creating UI
+        darkModeActive = prefs.getBoolean(PREF_DARK_MODE, false);
+        if (darkModeActive) {
+            FlatDarkLaf.setup();
+        } else {
+            FlatLightLaf.setup();
+        }
 
         frame = new JFrame("Ping Test");
         frame.setSize(1600, 900);
@@ -246,10 +261,8 @@ public class Main extends JPanel implements ActionListener {
         root.add(controlsBar, BorderLayout.NORTH);
         root.add(this, BorderLayout.CENTER);
         frame.setContentPane(root);
-        // Load and apply persisted theme
-        darkModeActive = prefs.getBoolean(PREF_DARK_MODE, false);
-        reloadTheme();
 
+        reloadTheme();
         frame.setVisible(true);
     }
 
@@ -514,67 +527,39 @@ public class Main extends JPanel implements ActionListener {
     }
 
     private void reloadTheme() {
-        Color foreground = darkModeActive ? Color.WHITE : Color.BLACK;
-        Color background = darkModeActive ? Color.BLACK : Color.WHITE;
-        Color bar = darkModeActive ? Color.BLACK : Color.WHITE;
-        Color divider = darkModeActive ? Color.WHITE : Color.BLACK;
-
-        hostLabel.setForeground(foreground);
-        countLabel.setForeground(foreground);
-        sentLabel.setForeground(foreground);
-        receivedLabel.setForeground(foreground);
-        lostLabel.setForeground(foreground);
-        lossLabel.setForeground(foreground);
-        bestLabel.setForeground(foreground);
-        averageLabel.setForeground(foreground);
-        medianLabel.setForeground(foreground);
-        worstLabel.setForeground(foreground);
-        lastLabel.setForeground(foreground);
-        elapsedLabel.setForeground(foreground);
-        startStop.setForeground(foreground);
-        startStop.setBackground(background);
-        clear.setForeground(foreground);
-        clear.setBackground(background);
-        copyResults.setForeground(foreground);
-        copyResults.setBackground(background);
-        copyPings.setForeground(foreground);
-        copyPings.setBackground(background);
-        screenshot.setForeground(foreground);
-        screenshot.setBackground(background);
-        theme.setForeground(foreground);
-        theme.setBackground(background);
-        host.setForeground(foreground);
-        host.setBackground(background);
-        host.setCaretColor(foreground);
-        count.setForeground(foreground);
-        count.setBackground(background);
-        // Ensure spinner editor and arrow buttons follow theme
-        if (count.getEditor() instanceof JSpinner.DefaultEditor) {
-            JFormattedTextField tf = ((JSpinner.DefaultEditor) count.getEditor()).getTextField();
-            tf.setForeground(foreground);
-            tf.setBackground(background);
-            tf.setCaretColor(foreground);
-        }
-        for (Component c : count.getComponents()) {
-            if (c instanceof JButton) {
-                JButton b = (JButton) c;
-                b.setForeground(foreground);
-                b.setBackground(background);
-            } else if (c instanceof JComponent) {
-                c.setForeground(foreground);
-                c.setBackground(background);
+        try {
+            if (darkModeActive) {
+                FlatDarkLaf.setup();
+            } else {
+                FlatLightLaf.setup();
             }
+            FlatLaf.updateUI();
+
+            refreshThemeColors();
+
+            Color sep = (seperatorColor != null ? seperatorColor : (gridColor != null ? gridColor : withAlpha(Color.BLACK, 40)));
+            controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, sep));
+
+            root.repaint();
+            theme.setText(darkModeActive ? "Light mode" : "Dark mode");
+        } catch (Exception ex) {
+            showErrorDialog("Failed to apply theme: " + ex.getMessage());
         }
-        controlsBar.setBackground(bar);
-        leftGroup.setBackground(bar);
-        centerGroup.setBackground(bar);
-        rightGroup.setBackground(bar);
-        centerWrapper.setBackground(bar);
-        controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, divider));
-        this.setBackground(background);
-        root.setBackground(background);
-        theme.setText(darkModeActive ? "Light mode" : "Dark mode");
-        root.repaint();
+    }
+
+    private void refreshThemeColors() {
+        fgColor = UIManager.getColor("Label.foreground");
+        gridColor = UIManager.getColor("Component.borderColor");
+        seperatorColor = UIManager.getColor("Component.separatorColor");
+        accentColor = new Color(63, 72, 204);
+        dangerColor = UIManager.getColor("Actions.Red");
+        if (dangerColor == null) dangerColor = Color.RED;
+
+        // Derived colors
+        axisColor = (fgColor != null ? fgColor : Color.BLACK);
+        stoppedBandColor = withAlpha(axisColor, 28);
+        Color baseDivider = (seperatorColor != null ? seperatorColor : (gridColor != null ? gridColor : axisColor));
+        dividerColor = withAlpha(baseDivider, 220);
     }
 
     private String formatTime(long timeMs) {
@@ -626,7 +611,6 @@ public class Main extends JPanel implements ActionListener {
         int plotRight = plotLeft + plotW;
 
         // Draw axes (left Y-axis, bottom X-axis)
-        Color axisColor = darkModeActive ? Color.WHITE : Color.BLACK;
         g2d.setColor(axisColor);
         g2d.setStroke(new BasicStroke(1.5f));
         g2d.drawLine(plotLeft, plotTop, plotLeft, plotBottom);
@@ -668,8 +652,7 @@ public class Main extends JPanel implements ActionListener {
 
         // Draw section shading and vertical dividers
         if (!startStopTimestamps.isEmpty()) {
-            Color stoppedBand = darkModeActive ? new Color(255, 255, 255, 36) : new Color(0, 0, 0, 28);
-            g2d.setColor(stoppedBand);
+            g2d.setColor(stoppedBandColor);
 
             // Draw bands for stopped windows
             for (int i = 1; i < startStopTimestamps.size() - 1; i += 2) {
@@ -685,7 +668,6 @@ public class Main extends JPanel implements ActionListener {
             }
 
             // Dashed vertical divider lines at each press time
-            Color dividerColor = darkModeActive ? new Color(255, 255, 255, 140) : new Color(0, 0, 0, 140);
             g2d.setColor(dividerColor);
             g2d.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 1f, new float[]{6f, 6f}, 0f));
 
@@ -762,7 +744,7 @@ public class Main extends JPanel implements ActionListener {
                     y1 = Math.max(plotTop, Math.min(plotBottom, y1));
                     y2 = Math.max(plotTop, Math.min(plotBottom, y2));
 
-                    g2d.setColor(BLUE);
+                    g2d.setColor(accentColor);
                     g2d.drawLine(x, y1, x, y2);
 
                     // Centerline
@@ -780,13 +762,13 @@ public class Main extends JPanel implements ActionListener {
                 }
 
                 if (hasTimeout[i]) {
-                    g2d.setColor(Color.RED);
+                    g2d.setColor(dangerColor);
                     g2d.setStroke(new BasicStroke(2f));
                     g2d.drawLine(x, plotBottom, x, plotBottom - tickH);
                 }
             }
 
-            g2d.setColor(BLUE);
+            g2d.setColor(accentColor);
             g2d.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2d.draw(centerLinePath);
         } else {
@@ -814,7 +796,7 @@ public class Main extends JPanel implements ActionListener {
                     if (drawing) {
                         // If the run had only a single point, draw it as a dot
                         if (runLen == 1) {
-                            g2d.setColor(BLUE);
+                            g2d.setColor(accentColor);
                             g2d.fillOval(lastX - r, lastY - r, r * 2, r * 2);
                         }
                         drawing = false;
@@ -822,7 +804,7 @@ public class Main extends JPanel implements ActionListener {
                     }
                     // Draw timeout tick immediately
                     if (timeout) {
-                        g2d.setColor(Color.RED);
+                        g2d.setColor(dangerColor);
                         g2d.setStroke(new BasicStroke(2f));
                         g2d.drawLine(x, plotBottom, x, plotBottom - tickH);
                         continue; // Skip adding this point to the path
@@ -845,11 +827,11 @@ public class Main extends JPanel implements ActionListener {
 
             // Finalize: if the last run was a singleton, draw its dot
             if (drawing && runLen == 1) {
-                g2d.setColor(BLUE);
+                g2d.setColor(accentColor);
                 g2d.fillOval(lastX - r, lastY - r, r * 2, r * 2);
             }
 
-            g2d.setColor(BLUE);
+            g2d.setColor(accentColor);
             g2d.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2d.draw(pingPath);
         }
@@ -863,7 +845,7 @@ public class Main extends JPanel implements ActionListener {
             px = Math.min(plotRight, px);
             py = Math.max(plotTop, py);
 
-            g2d.setColor(darkModeActive ? Color.WHITE : Color.BLACK);
+            g2d.setColor(axisColor);
             g2d.drawOval(px - 5, py - 5, 10, 10);
             g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
             fm = g2d.getFontMetrics();
@@ -883,6 +865,10 @@ public class Main extends JPanel implements ActionListener {
 
             g2d.drawString(s, tx, ty);
         }
+    }
+
+    private static Color withAlpha(Color base, int alpha) {
+        return new Color(base.getRed(), base.getGreen(), base.getBlue(), Math.max(0, Math.min(255, alpha)));
     }
 
     private void saveScreenshot() {
