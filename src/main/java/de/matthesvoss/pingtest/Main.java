@@ -57,7 +57,7 @@ public class Main extends JPanel implements ActionListener {
     private int plotLeft, plotTop, plotW, plotH;
     private long startTs = 0L, totalTime = 1L;
     private int median;
-    // TODO: screenshot menu save or clipboard and save, separate labels further, add light colors to label backgrounds, add last ping to right side, end of ping spikes detection, change dark mode white to darker color, dont stop on clear
+    // TODO: screenshot menu save or clipboard and save, separate labels further, add light colors to label backgrounds, add last ping to right side, end of ping spikes detection, change dark mode white to darker color
 
     private Color fgColor;          // primary foreground
     private Color gridColor;        // border/grid
@@ -421,10 +421,13 @@ public class Main extends JPanel implements ActionListener {
                 startStop.setText("Start");
             }
         } else if (e.getSource().equals(clear)) {
+            boolean running = !startStopTimestamps.isEmpty();
             stopPingProcess();
             resetStats();
             resetLabels();
-            startStop.setText("Start");
+            if (running) {
+                startPinging();
+            }
         } else if (e.getSource().equals(copyResults)) {
             copyResultsToClipboard();
         } else if (e.getSource().equals(copyPings)) {
@@ -964,7 +967,10 @@ public class Main extends JPanel implements ActionListener {
                     lastLabel.setText("Last: " + last + "ms");
                     repaint();
                 } else if (
-                        input.startsWith("Zeitüberschreitung") || input.startsWith("PING: Fehler") || input.startsWith("Request timed out")
+                        input.startsWith("Zeitüberschreitung")
+                                || input.startsWith("PING: Fehler")
+                                || input.startsWith("Request timed out")
+                                || input.startsWith("PING: transmit failed")
                                 || input.toLowerCase().contains("timeout")
                                 || input.toLowerCase().contains("unreachable")
                                 || input.toLowerCase().contains("time to live exceeded")
