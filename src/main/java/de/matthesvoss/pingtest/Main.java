@@ -421,7 +421,7 @@ public class Main extends JPanel implements ActionListener {
                 startStop.setText("Start");
             }
         } else if (e.getSource().equals(clear)) {
-            boolean running = !startStopTimestamps.isEmpty();
+            boolean running = startStop.getText().equals("Stop");
             stopPingProcess();
             resetStats();
             resetLabels();
