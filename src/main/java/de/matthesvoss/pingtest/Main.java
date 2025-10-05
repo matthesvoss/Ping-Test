@@ -24,6 +24,7 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
+import java.util.regex.Pattern;
 
 public class Main extends JPanel implements ActionListener {
     private static final long serialVersionUID = 1L;
@@ -970,7 +971,7 @@ public class Main extends JPanel implements ActionListener {
                     lastLabel.setText("Last: " + last + "ms");
                     repaint();
                 } else if (
-                        input.startsWith("Zeitüberschreitung")
+                        Pattern.compile("^Zeit.*berschreitung", Pattern.CASE_INSENSITIVE).matcher(input).find()
                                 || input.startsWith("PING: Fehler")
                                 || input.startsWith("Request timed out")
                                 || input.startsWith("PING: transmit failed")
