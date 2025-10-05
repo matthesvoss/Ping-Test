@@ -57,7 +57,6 @@ public class Main extends JPanel implements ActionListener {
     private int plotLeft, plotTop, plotW, plotH;
     private long startTs = 0L, totalTime = 1L;
     private int median;
-    // TODO: screenshot menu save or clipboard and save, separate labels further, add light colors to label backgrounds, add last ping to right side, end of ping spikes detection, change dark mode white to darker color
 
     private Color fgColor;          // primary foreground
     private Color gridColor;        // border/grid
@@ -68,11 +67,15 @@ public class Main extends JPanel implements ActionListener {
     private Color axisColor;        // axis lines
     private Color stoppedBandColor; // shaded stopped sections
     private Color dividerColor;     // vertical divider lines
+    // TODO: screenshot menu save or clipboard and save, separate labels further, add light colors to label backgrounds,
+    //  add last ping to right side, end of ping spikes detection,
+    //  first ping on y axis and start and stop times on x axis
 
     private Main() {
         isWindows = System.getProperty("os.name").toLowerCase().contains("win");
 
         // Initialize FlatLaf based on persisted preference before creating UI
+        FlatLaf.registerCustomDefaultsSource("de.matthesvoss.pingtest");
         darkModeActive = prefs.getBoolean(PREF_DARK_MODE, false);
         if (darkModeActive) {
             FlatDarkLaf.setup();
@@ -554,7 +557,7 @@ public class Main extends JPanel implements ActionListener {
         fgColor = UIManager.getColor("Label.foreground");
         gridColor = UIManager.getColor("Component.borderColor");
         seperatorColor = UIManager.getColor("Component.separatorColor");
-        accentColor = new Color(63, 72, 204);
+        accentColor = UIManager.getColor("Component.accentColor");
         dangerColor = UIManager.getColor("Actions.Red");
         if (dangerColor == null) dangerColor = Color.RED;
 
