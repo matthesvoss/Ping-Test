@@ -5,15 +5,14 @@ import java.awt.*;
 
 /**
  * FlowLayout subclass that fully supports wrapping of components.
- * By Rob Camick, source: https://github.com/tips4java/tips4java/blob/main/source/WrapLayout.java
+ * By Rob Camick, <a href="https://github.com/tips4java/tips4java/blob/main/source/WrapLayout.java">source</a>
  */
 public class WrapLayout extends FlowLayout {
-    private Dimension preferredLayoutSize;
-
     /**
      * Constructs a new <code>WrapLayout</code> with a left
      * alignment and a default 5-unit horizontal and vertical gap.
      */
+    @SuppressWarnings("unused")
     public WrapLayout() {
         super();
     }
@@ -27,6 +26,7 @@ public class WrapLayout extends FlowLayout {
      *
      * @param align the alignment value
      */
+    @SuppressWarnings({"MagicConstant", "unused"})
     public WrapLayout(int align) {
         super(align);
     }
@@ -43,6 +43,7 @@ public class WrapLayout extends FlowLayout {
      * @param hgap  the horizontal gap between components
      * @param vgap  the vertical gap between components
      */
+    @SuppressWarnings("MagicConstant")
     public WrapLayout(int align, int hgap, int vgap) {
         super(align, hgap, vgap);
     }
@@ -89,14 +90,13 @@ public class WrapLayout extends FlowLayout {
             //  When the container width = 0, the preferred width of the container
             //  has not yet been calculated so lets ask for the maximum.
 
-            int targetWidth = target.getSize().width;
             Container container = target;
 
             while (container.getSize().width == 0 && container.getParent() != null) {
                 container = container.getParent();
             }
 
-            targetWidth = container.getSize().width;
+            int targetWidth = container.getSize().width;
 
             if (targetWidth == 0)
                 targetWidth = Integer.MAX_VALUE;

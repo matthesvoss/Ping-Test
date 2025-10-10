@@ -25,6 +25,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
@@ -35,6 +36,7 @@ public class Main extends JPanel implements ActionListener {
     private final boolean isWindows;
     private final JFrame frame;
     private final JPanel controlsBar;
+    @SuppressWarnings("FieldCanBeLocal")
     private final JLabel hostLabel, countLabel, sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel,
             medianLabel, worstLabel, lastLabel, elapsedLabel;
     private final JTextField host;
@@ -57,11 +59,12 @@ public class Main extends JPanel implements ActionListener {
     private long runningSumOkPings;
     private String lastHost = "";
     private boolean darkModeActive;
-    private volatile int runGeneration; // Guards against out-of-order updates when rapidly starting/stopping
+    private final AtomicInteger runGeneration = new AtomicInteger();
     private int plotLeft, plotTop, plotW, plotH;
     private long startTs, totalTime = 1L, elapsedTime;
     private int median;
 
+    @SuppressWarnings("FieldCanBeLocal")
     private Color fgColor;          // primary foreground
     private Color gridColor;        // border/grid
     private Color seperatorColor;   // separator
@@ -281,6 +284,7 @@ public class Main extends JPanel implements ActionListener {
         return p;
     }
 
+    @SuppressWarnings("unused")
     private void showInfoDialog(String message, String title) {
         SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(frame, message, title, JOptionPane.INFORMATION_MESSAGE)
@@ -401,6 +405,7 @@ public class Main extends JPanel implements ActionListener {
         stopPingProcess();
     }
 
+    @SuppressWarnings("ConstantConditions")
     private void medianAdd(int value) {
         // Insert
         if (medianLow.isEmpty() || value <= medianLow.peek()) {
@@ -455,29 +460,11 @@ public class Main extends JPanel implements ActionListener {
 
     private void startPingProcess() {
         try {
-            int n = (int) count.getValue();
-
-            ProcessBuilder pb;
-            if (isWindows) {
-                // Windows: -t for infinite, -n for count
-                if (n == 0) {
-                    pb = new ProcessBuilder("ping", "-t", host.getText());
-                } else {
-                    pb = new ProcessBuilder("ping", "-n", String.valueOf(n), host.getText());
-                }
-            } else {
-                // Linux/Unix: continuous by default, -c for count
-                if (n == 0) {
-                    pb = new ProcessBuilder("ping", host.getText());
-                } else {
-                    pb = new ProcessBuilder("ping", "-c", String.valueOf(n), host.getText());
-                }
-            }
+            ProcessBuilder pb = getProcessBuilder();
             pingProcess = pb.start();
 
             // Bump generation to invalidate any previous workers' UI updates
-            runGeneration++;
-            int gen = runGeneration;
+            int gen = runGeneration.incrementAndGet();
 
             pingProcessInputStreamTask = new PingProcessInputStreamTask(pingProcess, gen);
             pingProcessInputStreamTask.execute();
@@ -488,8 +475,30 @@ public class Main extends JPanel implements ActionListener {
         }
     }
 
+    private ProcessBuilder getProcessBuilder() {
+        int n = (int) count.getValue();
+
+        ProcessBuilder pb;
+        if (isWindows) {
+            // Windows: -t for infinite, -n for count
+            if (n == 0) {
+                pb = new ProcessBuilder("ping", "-t", host.getText());
+            } else {
+                pb = new ProcessBuilder("ping", "-n", String.valueOf(n), host.getText());
+            }
+        } else {
+            // Linux/Unix: continuous by default, -c for count
+            if (n == 0) {
+                pb = new ProcessBuilder("ping", host.getText());
+            } else {
+                pb = new ProcessBuilder("ping", "-c", String.valueOf(n), host.getText());
+            }
+        }
+        return pb;
+    }
+
     private void stopPingProcess() {
-        runGeneration++;
+        runGeneration.incrementAndGet();
         if (pingProcess != null) {
             try {
                 // Request graceful shutdown of the specific process
@@ -981,7 +990,7 @@ public class Main extends JPanel implements ActionListener {
 
         @Override
         protected void process(List<String> inputChunks) {
-            if (generation != runGeneration) return;
+            if (generation != runGeneration.get()) return;
             for (String input : inputChunks) {
                 // Windows success lines ("Antwort", "Reply") and Linux/Unix success lines (contains "time=")
                 if (input.startsWith("Antwort") || input.startsWith("Reply") || input.contains("time=")) {
@@ -1039,7 +1048,7 @@ public class Main extends JPanel implements ActionListener {
 
         @Override
         protected void done() {
-            if (generation != runGeneration) return;
+            if (generation != runGeneration.get()) return;
             startStopTimestamps.add(System.currentTimeMillis());
             elapsedTimer.stop();
             updateElapsedLabel();
@@ -1071,7 +1080,7 @@ public class Main extends JPanel implements ActionListener {
 
         @Override
         protected void done() {
-            if (generation != runGeneration) return;
+            if (generation != runGeneration.get()) return;
             if (!errorLines.isEmpty()) {
                 showErrorDialog(String.join("\n", errorLines));
             }
