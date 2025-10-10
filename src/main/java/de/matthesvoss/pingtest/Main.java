@@ -56,7 +56,7 @@ public class Main extends JPanel implements ActionListener {
     private boolean darkModeActive;
     private volatile int runGeneration = 0; // Guards against out-of-order updates when rapidly starting/stopping
     private int plotLeft, plotTop, plotW, plotH;
-    private long startTs = 0L, totalTime = 1L;
+    private long startTs, totalTime = 1L, elapsedTime;
     private int median;
 
     private Color fgColor;          // primary foreground
@@ -578,17 +578,18 @@ public class Main extends JPanel implements ActionListener {
 
     private void updateElapsedLabel() {
         if (!startStopTimestamps.isEmpty()) {
-            long elapsed = 0L;
+            long elapsedNew = 0L;
             if (startStopTimestamps.size() > 1) {
                 for (int i = 1; i < startStopTimestamps.size(); i += 2) {
-                    elapsed += startStopTimestamps.get(i) - startStopTimestamps.get(i - 1);
+                    elapsedNew += startStopTimestamps.get(i) - startStopTimestamps.get(i - 1);
                 }
             }
             boolean running = startStopTimestamps.size() % 2 == 1;
             if (running) {
-                elapsed += System.currentTimeMillis() - startStopTimestamps.get(startStopTimestamps.size() - 1);
+                elapsedNew += System.currentTimeMillis() - startStopTimestamps.get(startStopTimestamps.size() - 1);
             }
-            elapsedLabel.setText("Elapsed: " + formatTime(elapsed));
+            elapsedLabel.setText("Elapsed: " + formatTime(elapsedNew));
+            elapsedTime = elapsedNew;
         }
     }
 
@@ -701,8 +702,8 @@ public class Main extends JPanel implements ActionListener {
         }
         // Use LOD if there are far more points than pixels
         int n = pingTimestamps.size();
-        boolean useLOD = plotW > 0 && n > plotW * 2; // Threshold x2 pixels
-        final int tickH = Math.max(4, Math.min(10, plotH / 30));
+        boolean useLOD = elapsedTime / n < totalTime / plotW;
+        int r = 3;
 
         if (useLOD) {
             // Arrays per on-screen x pixel
