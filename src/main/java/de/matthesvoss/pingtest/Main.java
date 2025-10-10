@@ -674,7 +674,7 @@ public class Main extends JPanel implements ActionListener {
             for (int i = 1; i < startStopTimestamps.size() - 1; i += 2) {
                 long stopTs = startStopTimestamps.get(i);
                 long nextStartTs = startStopTimestamps.get(i + 1);
-                int xStart = plotLeft + (int) Math.round((stopTs - startTs) * xScale);
+                int xStart = plotLeft + (int) Math.round((stopTs - startTs) * xScale) + 1;
                 int xEnd = plotLeft + (int) Math.round((nextStartTs - startTs) * xScale);
                 xStart = Math.max(plotLeft, Math.min(plotRight, xStart));
                 xEnd = Math.max(plotLeft, Math.min(plotRight, xEnd));
