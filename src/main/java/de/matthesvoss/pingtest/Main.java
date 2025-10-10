@@ -12,6 +12,7 @@ import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.awt.geom.Path2D;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -40,7 +41,7 @@ public class Main extends JPanel implements ActionListener {
     private final ArrayList<Long> pingTimestamps = new ArrayList<>();
     private final ArrayList<Integer> pingValues = new ArrayList<>();
     private final Set<Integer> lossIndices = new HashSet<>();
-    private final ArrayList<Integer> breakIndices = new ArrayList<>();
+    private final Set<Integer> breakIndices = new HashSet<>();
     private final DecimalFormat lossFormat;
     private final DateFormat timestampFormat;
     private final ArrayList<Long> startStopTimestamps = new ArrayList<>();
@@ -54,7 +55,7 @@ public class Main extends JPanel implements ActionListener {
     private long runningSumOkPings;
     private String lastHost = "";
     private boolean darkModeActive;
-    private volatile int runGeneration = 0; // Guards against out-of-order updates when rapidly starting/stopping
+    private volatile int runGeneration; // Guards against out-of-order updates when rapidly starting/stopping
     private int plotLeft, plotTop, plotW, plotH;
     private long startTs, totalTime = 1L, elapsedTime;
     private int median;
@@ -601,9 +602,16 @@ public class Main extends JPanel implements ActionListener {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+        Stroke normalStroke = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+        Stroke thinStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
+        Stroke dividerStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 1f, new float[]{6f, 6f}, 0f);
+
+        // Y-axis labels
+        String yBottom = "0ms";
+        String yTop = (worst <= 0 ? "0" : worst) + "ms";
         // Axis layout
         FontMetrics fm = g2d.getFontMetrics();
-        int yLabelWidth = fm.stringWidth((worst <= 0 ? "0" : worst) + "ms");
+        int yLabelWidth = fm.stringWidth(yTop);
         int xLabelHeight = fm.getHeight();
         int padding = 8;
         int leftMargin = Math.max(40, yLabelWidth + padding * 2);
@@ -613,25 +621,22 @@ public class Main extends JPanel implements ActionListener {
 
         plotLeft = leftMargin;
         plotTop = topMargin;
-        plotW = Math.max(1, width - leftMargin - rightMargin);
-        plotH = Math.max(1, height - topMargin - bottomMargin);
+        plotW = Math.max(0, width - leftMargin - rightMargin);
+        plotH = Math.max(0, height - topMargin - bottomMargin);
         int plotBottom = plotTop + plotH;
         int plotRight = plotLeft + plotW;
 
         // Draw axes (left Y-axis, bottom X-axis)
         g2d.setColor(axisColor);
-        g2d.setStroke(new BasicStroke(1.5f));
+        g2d.setStroke(thinStroke);
         g2d.drawLine(plotLeft, plotTop, plotLeft, plotBottom);
         g2d.drawLine(plotLeft, plotBottom, plotRight, plotBottom);
 
-        // Y-axis labels
-        String yBottom = "0ms";
-        String yTop = (worst <= 0 ? "0" : worst) + "ms";
-        // Top label
-        int topLabelX = plotLeft - padding - fm.stringWidth(yTop);
+        // Top y-axis label
+        int topLabelX = plotLeft - padding - yLabelWidth;
         int topLabelY = plotTop + fm.getAscent();
         g2d.drawString(yTop, Math.max(2, topLabelX), Math.max(fm.getAscent(), topLabelY));
-        // Bottom label
+        // Bottom y-axis label
         int bottomLabelX = plotLeft - padding - fm.stringWidth(yBottom);
         int bottomLabelY = plotBottom - 2;
         g2d.drawString(yBottom, Math.max(2, bottomLabelX), bottomLabelY);
@@ -655,6 +660,9 @@ public class Main extends JPanel implements ActionListener {
         g2d.drawLine(plotLeft, plotBottom, plotLeft, plotBottom + tickSize);
         g2d.drawLine(plotRight, plotBottom, plotRight, plotBottom + tickSize);
 
+        if (plotW == 0 || plotH == 0) {
+            return;
+        }
         final double xScale = totalTime > 0 ? (double) plotW / totalTime : 0.0;
         final double yScale = worst > 0 ? (double) plotH / worst : 0.0;
 
@@ -677,7 +685,7 @@ public class Main extends JPanel implements ActionListener {
 
             // Dashed vertical divider lines at each press time
             g2d.setColor(dividerColor);
-            g2d.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 1f, new float[]{6f, 6f}, 0f));
+            g2d.setStroke(dividerStroke);
 
             for (int i = 1; i < startStopTimestamps.size(); i++) {
                 if (startStopTimestamps.size() % 2 == 0 && i == startStopTimestamps.size() - 1) {
@@ -691,7 +699,7 @@ public class Main extends JPanel implements ActionListener {
 
             // Redraw axes to keep them crisp
             g2d.setColor(axisColor);
-            g2d.setStroke(new BasicStroke(1.5f));
+            g2d.setStroke(thinStroke);
             g2d.drawLine(plotLeft, plotTop, plotLeft, plotBottom);
             g2d.drawLine(plotLeft, plotBottom, plotRight, plotBottom);
         }
@@ -710,13 +718,14 @@ public class Main extends JPanel implements ActionListener {
             int len = plotW + 1;
             int[] minVal = new int[len];
             int[] maxVal = new int[len];
-            boolean[] hasData = new boolean[len];
-            boolean[] hasTimeout = new boolean[len];
+            Set<Integer> timeouts = new HashSet<>();
+            Map<Integer, Integer> firstPingIndices = new HashMap<>();
 
             Arrays.fill(minVal, Integer.MAX_VALUE);
             Arrays.fill(maxVal, Integer.MIN_VALUE);
 
             // Collect stats per pixel
+            int lastIdx = -1;
             for (int i = 0; i < n; i++) {
                 long ts = pingTimestamps.get(i);
                 int val = pingValues.get(i);
@@ -725,9 +734,8 @@ public class Main extends JPanel implements ActionListener {
                 idx = Math.max(0, Math.min(plotW, idx));
 
                 if (lossIndices.contains(i)) {
-                    hasTimeout[idx] = true;
+                    timeouts.add(idx);
                 } else {
-                    hasData[idx] = true;
                     if (val < minVal[idx]) {
                         minVal[idx] = val;
                     }
@@ -735,17 +743,34 @@ public class Main extends JPanel implements ActionListener {
                         maxVal[idx] = val;
                     }
                 }
+
+                if (idx != lastIdx) {
+                    firstPingIndices.put(idx, i);
+                }
+                lastIdx = idx;
             }
 
             // Draw envelope (vertical segments per pixel) and centerline
             Path2D centerLinePath = new Path2D.Double();
-            boolean drawing = false;
+            int runLen = 0;
+            boolean lastHasTimeout = false;
 
-            g2d.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL));
             for (int i = 0; i < len; i++) {
-                int x = plotLeft + i;
+                boolean hasData = minVal[i] != Integer.MAX_VALUE;
+                boolean hasTimeout = timeouts.contains(i);
+                if (!hasData && !hasTimeout) {
+                    continue;
+                }
 
-                if (hasData[i]) {
+                // Draw vertical segment
+                int firstPingIdx = firstPingIndices.getOrDefault(i, -2);
+                boolean breakHere = breakIndices.contains(firstPingIdx);
+                boolean breakAfter = breakIndices.contains(firstPingIdx + 1) || i == len - 1;
+                if (breakHere) {
+                    runLen = 0;
+                }
+                int x = plotLeft + i;
+                if (hasData) {
                     int y1 = plotBottom - (int) Math.round(minVal[i] * yScale);
                     int y2 = plotBottom - (int) Math.round(maxVal[i] * yScale);
 
@@ -753,40 +778,58 @@ public class Main extends JPanel implements ActionListener {
                     y2 = Math.max(plotTop, Math.min(plotBottom, y2));
 
                     g2d.setColor(accentColor);
-                    g2d.drawLine(x, y1, x, y2);
-
-                    // Centerline
-                    double mid = 0.5 * (minVal[i] + maxVal[i]);
-                    int yMid = plotBottom - (int) Math.round(mid * yScale);
-                    if (!drawing) {
+                    if (runLen == 0 && breakAfter) { // Draw centerline instead
+                        if (minVal[i] == maxVal[i]) {
+                            g2d.fillOval(x - r, y1 - r, r * 2, r * 2);
+                        } else {
+                            g2d.setStroke(normalStroke);
+                            g2d.drawLine(x, y1, x, y2);
+                        }
+                    } else {
+                        g2d.setStroke(thinStroke);
+                        g2d.drawLine(x, y1, x, y2);
+                    }
+                }
+                // Draw centerline
+                int yMid = 0;
+                if (hasData) {
+                    double mid = (minVal[i] + maxVal[i]) / 2.0;
+                    yMid = plotBottom - (int) Math.round(mid * yScale);
+                }
+                if (hasTimeout || (lastHasTimeout && !breakHere)) {
+                    // Draw centerline in danger color
+                    g2d.setColor(dangerColor);
+                    if (runLen == 0 && breakAfter) {
+                        g2d.fillOval(x - r, plotBottom - r, r * 2, r * 2);
+                    } else if (runLen != 0) {
+                        g2d.setStroke(normalStroke);
+                        Point2D last = centerLinePath.getCurrentPoint();
+                        int lastYMid = (int) Math.round(last.getY());
+                        int y = hasTimeout ? plotBottom : yMid;
+                        g2d.drawLine(x - 1, lastYMid, x, y);
+                        centerLinePath.moveTo(x, y);
+                    }
+                } else {
+                    if (runLen == 0) {
                         centerLinePath.moveTo(x, yMid);
-                        drawing = true;
                     } else {
                         centerLinePath.lineTo(x, yMid);
                     }
-                } else {
-                    // Gap in data: break the centerline
-                    drawing = false;
                 }
 
-                if (hasTimeout[i]) {
-                    g2d.setColor(dangerColor);
-                    g2d.setStroke(new BasicStroke(2f));
-                    g2d.drawLine(x, plotBottom, x, plotBottom - tickH);
-                }
+                runLen++;
+                lastHasTimeout = hasTimeout;
             }
 
             g2d.setColor(accentColor);
-            g2d.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2d.setStroke(normalStroke);
             g2d.draw(centerLinePath);
         } else {
             // Exact Path2D polyline (no decimation)
             Path2D pingPath = new Path2D.Double();
-            boolean drawing = false; // Whether we are currently inside a run of non-timeout points
-            int runLen = 0;          // Length of the current run (to detect singletons)
-            int lastX = 0, lastY = 0;
+            int runLen = 0; // Length of the current run (to detect singletons)
+            boolean lastIsTimeout = false;
 
-            int r = 3;
             for (int i = 0; i < n; i++) {
                 long ts = pingTimestamps.get(i);
                 int val = pingValues.get(i);
@@ -797,50 +840,47 @@ public class Main extends JPanel implements ActionListener {
                 y = Math.max(plotTop, Math.min(plotBottom, y));
 
                 boolean timeout = lossIndices.contains(i);
-                boolean breakHere = breakIndices.contains(i); // Boundary before current point
+                boolean breakHere = breakIndices.contains(i);
+                boolean breakAfter = breakIndices.contains(i + 1) || i == n - 1;
 
-                // If a break or timeout occurs, close any ongoing run first
-                if (timeout || breakHere) {
-                    if (drawing) {
-                        // If the run had only a single point, draw it as a dot
-                        if (runLen == 1) {
-                            g2d.setColor(accentColor);
-                            g2d.fillOval(lastX - r, lastY - r, r * 2, r * 2);
-                        }
-                        drawing = false;
-                        runLen = 0;
-                    }
-                    // Draw timeout tick immediately
-                    if (timeout) {
-                        g2d.setColor(dangerColor);
-                        g2d.setStroke(new BasicStroke(2f));
-                        g2d.drawLine(x, plotBottom, x, plotBottom - tickH);
-                        continue; // Skip adding this point to the path
-                    }
-                    // If it was a break (not timeout), we still need to start a fresh segment below
-                }
-
-                // Normal (non-timeout) point: extend or start the path
-                if (!drawing) {
-                    pingPath.moveTo(x, y);
-                    drawing = true;
-                    runLen = 1;
+                if (timeout || (lastIsTimeout && !breakHere)) {
+                    g2d.setColor(dangerColor);
                 } else {
-                    pingPath.lineTo(x, y);
-                    runLen++;
+                    g2d.setColor(accentColor);
                 }
-                lastX = x;
-                lastY = y;
-            }
 
-            // Finalize: if the last run was a singleton, draw its dot
-            if (drawing && runLen == 1) {
-                g2d.setColor(accentColor);
-                g2d.fillOval(lastX - r, lastY - r, r * 2, r * 2);
+                // If there is a break, start a new segment
+                if (breakHere) {
+                    runLen = 0;
+                }
+                // If the run has only a single point, draw it as a dot
+                if (runLen == 0 && breakAfter) {
+                    g2d.fillOval(x - r, y - r, r * 2, r * 2);
+                }
+                if (timeout || (lastIsTimeout && !breakHere)) {
+                    // Draw timeout segment in danger color
+                    if (runLen != 0) {
+                        g2d.setStroke(normalStroke);
+                        Point2D last = pingPath.getCurrentPoint();
+                        int lastX = (int) Math.round(last.getX());
+                        int lastY = (int) Math.round(last.getY());
+                        g2d.drawLine(lastX, lastY, x, y);
+                        pingPath.moveTo(x, y);
+                    }
+                } else {
+                    if (runLen == 0) {
+                        pingPath.moveTo(x, y);
+                    } else {
+                        pingPath.lineTo(x, y);
+                    }
+                }
+
+                runLen++;
+                lastIsTimeout = timeout;
             }
 
             g2d.setColor(accentColor);
-            g2d.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2d.setStroke(normalStroke);
             g2d.draw(pingPath);
         }
 
