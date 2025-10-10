@@ -33,8 +33,9 @@ public class Main extends JPanel implements ActionListener {
     private static final int HOVER_RADIUS = 30;
     private final boolean isWindows;
     private final JFrame frame;
-    private final JPanel root, controlsBar, leftGroup, centerGroup, rightGroup, centerWrapper;
-    private final JLabel hostLabel, countLabel, sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel;
+    private final JPanel controlsBar;
+    private final JLabel hostLabel, countLabel, sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel,
+            medianLabel, worstLabel, lastLabel, elapsedLabel;
     private final JTextField host;
     private final JButton startStop, clear, copyResults, copyPings, screenshot, theme;
     private final JSpinner count;
@@ -177,83 +178,64 @@ public class Main extends JPanel implements ActionListener {
         lossFormat = new DecimalFormat("0.00");
         lossFormat.setRoundingMode(RoundingMode.HALF_UP);
 
-        hostLabel = new JLabel("Host:");
+        // Host and count controls
+        hostLabel = label("Host:");
         host = new JTextField("google.de", 20);
-        countLabel = new JLabel("Count (0=infinity):");
+        countLabel = label("Count (0=infinity):");
         count = new JSpinner(new SpinnerNumberModel(0, 0, 86400, 1));
-        startStop = new JButton("Start");
-        startStop.addActionListener(this);
-        startStop.setFocusable(false);
+
+        // Main buttons
+        startStop = button("Start");
         SwingUtilities.getRootPane(frame).setDefaultButton(startStop);
-        clear = new JButton("Clear");
-        clear.addActionListener(this);
-        clear.setFocusable(false);
-        sentLabel = new JLabel("Sent: ");
-        receivedLabel = new JLabel("Received: ");
-        lostLabel = new JLabel("Lost: ");
-        lossLabel = new JLabel("Loss: %");
-        bestLabel = new JLabel("Best: ms");
-        averageLabel = new JLabel("Average: ms");
-        medianLabel = new JLabel("Median: ms");
-        worstLabel = new JLabel("Worst: ms");
-        lastLabel = new JLabel("Last: ms");
-        elapsedLabel = new JLabel("Elapsed: 00:00:00");
-        copyResults = new JButton("Copy Results");
-        copyResults.addActionListener(this);
-        copyResults.setFocusable(false);
-        copyPings = new JButton("Copy Pings");
-        copyPings.addActionListener(this);
-        copyPings.setFocusable(false);
-        screenshot = new JButton("Screenshot");
-        screenshot.addActionListener(this);
-        screenshot.setFocusable(false);
-        theme = new JButton("Dark mode");
-        theme.addActionListener(this);
-        theme.setFocusable(false);
+        clear = button("Clear");
 
-        // Build three groups: LEFT (FlowLayout.LEFT), CENTER (WrapLayout.CENTER), RIGHT (FlowLayout.RIGHT)
-        leftGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        leftGroup.add(hostLabel);
-        leftGroup.add(host);
-        leftGroup.add(countLabel);
-        leftGroup.add(count);
-        leftGroup.add(startStop);
-        leftGroup.add(clear);
+        // Right-side buttons
+        copyResults = button("Copy Results");
+        copyPings = button("Copy Pings");
+        screenshot = button("Screenshot");
+        theme = button("Dark mode");
 
-        centerGroup = new JPanel(new WrapLayout(FlowLayout.CENTER, 6, 0));
-        centerGroup.add(sentLabel);
-        centerGroup.add(receivedLabel);
-        centerGroup.add(lostLabel);
-        centerGroup.add(lossLabel);
-        centerGroup.add(bestLabel);
-        centerGroup.add(averageLabel);
-        centerGroup.add(medianLabel);
-        centerGroup.add(worstLabel);
-        centerGroup.add(lastLabel);
-        centerGroup.add(elapsedLabel);
+        // Stats labels
+        sentLabel = label("Sent: ");
+        receivedLabel = label("Received: ");
+        lostLabel = label("Lost: ");
+        lossLabel = label("Loss: %");
+        bestLabel = label("Best: ms");
+        averageLabel = label("Average: ms");
+        medianLabel = label("Median: ms");
+        worstLabel = label("Worst: ms");
+        lastLabel = label("Last: ms");
+        elapsedLabel = label("Elapsed: 00:00:00");
 
-        rightGroup = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
-        rightGroup.add(copyResults);
-        rightGroup.add(copyPings);
-        rightGroup.add(screenshot);
-        rightGroup.add(theme);
+        JPanel leftGroup = makeFlowGroup(new FlowLayout(FlowLayout.LEFT, 6, 4),
+                hostLabel, host, countLabel, count, startStop, clear);
 
-        // Use BorderLayout so left/right keep preferred widths and center wraps as space changes
-        controlsBar = new JPanel(new BorderLayout());
+        JPanel centerGroup = makeFlowGroup(new WrapLayout(FlowLayout.CENTER, 6, 0),
+                sentLabel, receivedLabel, lostLabel, lossLabel,
+                bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
 
-        // Center vertically when single row (keeps consistent look with left/right)
-        centerWrapper = new JPanel(new GridBagLayout());
-        GridBagConstraints centerGbc = new GridBagConstraints();
-        centerGbc.anchor = GridBagConstraints.CENTER;
-        centerGbc.weightx = 1.0;
-        centerGbc.weighty = 1.0;
-        centerWrapper.add(centerGroup, centerGbc);
+        JPanel rightGroup = makeFlowGroup(new FlowLayout(FlowLayout.RIGHT, 6, 4),
+                copyResults, copyPings, screenshot, theme);
 
-        controlsBar.add(leftGroup, BorderLayout.WEST);
-        controlsBar.add(centerWrapper, BorderLayout.CENTER);
-        controlsBar.add(rightGroup, BorderLayout.EAST);
+        // Button bar (left/right in one row)
+        JPanel buttonBar = new JPanel(new BorderLayout());
+        buttonBar.add(leftGroup, BorderLayout.WEST);
+        buttonBar.add(rightGroup, BorderLayout.EAST);
 
-        // Ensure the center group recalculates its preferred size on resize so it can "flatten out" again
+        // Top row: buttons
+        JPanel topRowWrapper = new JPanel(new BorderLayout());
+        topRowWrapper.add(buttonBar, BorderLayout.CENTER);
+        // Bottom row: labels
+        JPanel centerWrapper = new JPanel(new BorderLayout());
+        centerWrapper.add(centerGroup, BorderLayout.CENTER);
+
+        // Stack buttons row and labels row in the main control bar
+        controlsBar = new JPanel();
+        controlsBar.setLayout(new BoxLayout(controlsBar, BoxLayout.Y_AXIS));
+        controlsBar.add(topRowWrapper);
+        controlsBar.add(centerWrapper);
+
+        // Keep the label group responsive to resizing
         controlsBar.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -262,7 +244,7 @@ public class Main extends JPanel implements ActionListener {
             }
         });
 
-        root = new JPanel(new BorderLayout());
+        JPanel root = new JPanel(new BorderLayout());
         root.add(controlsBar, BorderLayout.NORTH);
         root.add(this, BorderLayout.CENTER);
         frame.setContentPane(root);
@@ -273,6 +255,29 @@ public class Main extends JPanel implements ActionListener {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(Main::new);
+    }
+
+    private static Color withAlpha(Color base, int alpha) {
+        return new Color(base.getRed(), base.getGreen(), base.getBlue(), Math.max(0, Math.min(255, alpha)));
+    }
+
+    private JLabel label(String text) {
+        return new JLabel(text);
+    }
+
+    private JButton button(String text) {
+        JButton b = new JButton(text);
+        b.addActionListener(this);
+        b.setFocusable(false);
+        return b;
+    }
+
+    private JPanel makeFlowGroup(LayoutManager layout, Component... components) {
+        JPanel p = new JPanel(layout);
+        for (Component c : components) {
+            p.add(c);
+        }
+        return p;
     }
 
     private void showInfoDialog(String message, String title) {
@@ -548,7 +553,6 @@ public class Main extends JPanel implements ActionListener {
             Color sep = (seperatorColor != null ? seperatorColor : (gridColor != null ? gridColor : withAlpha(Color.BLACK, 40)));
             controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, sep));
 
-            root.repaint();
             theme.setText(darkModeActive ? "Light mode" : "Dark mode");
         } catch (Exception ex) {
             showErrorDialog("Failed to apply theme: " + ex.getMessage());
@@ -913,10 +917,6 @@ public class Main extends JPanel implements ActionListener {
 
             g2d.drawString(s, tx, ty);
         }
-    }
-
-    private static Color withAlpha(Color base, int alpha) {
-        return new Color(base.getRed(), base.getGreen(), base.getBlue(), Math.max(0, Math.min(255, alpha)));
     }
 
     private void saveScreenshot() {
