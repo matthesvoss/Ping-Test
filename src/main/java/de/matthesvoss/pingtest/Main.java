@@ -948,8 +948,6 @@ public class Main extends JPanel implements ActionListener {
 
                 // Also copy the screenshot to the clipboard
                 Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new TransferableImage(img), null);
-
-                showInfoDialog("Screenshot saved:\n" + file.getAbsolutePath(), "Screenshot");
             }
         } catch (Exception ex) {
             showErrorDialog("Failed to save screenshot: " + ex.getMessage());
