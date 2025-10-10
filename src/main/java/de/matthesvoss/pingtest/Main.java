@@ -1,8 +1,8 @@
 package de.matthesvoss.pingtest;
 
-import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -10,6 +10,7 @@ import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
 import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
@@ -63,9 +64,9 @@ public class Main extends JPanel implements ActionListener {
 
     private Color fgColor;          // primary foreground
     private Color gridColor;        // border/grid
-    private Color seperatorColor;         // separator
+    private Color seperatorColor;   // separator
     private Color accentColor;      // main accent for lines
-    private Color dangerColor;      // timeouts / error ticks
+    private Color dangerColor;      // timeouts / errors
     // Derived from the above to avoid recomputation in paint
     private Color axisColor;        // axis lines
     private Color stoppedBandColor; // shaded stopped sections
@@ -375,7 +376,8 @@ public class Main extends JPanel implements ActionListener {
                 String value = lossIndices.contains(i) ? "Request timed out" : pingValues.get(i) + "ms";
                 lines.add(timestampFormat.format(new Date(pingTimestamps.get(i))) + "\t" + value);
             }
-            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(String.join("\n", lines)), null);
+            Transferable t = new StringSelection(String.join("\n", lines));
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(t, null);
         } catch (Exception ex) {
             showErrorDialog("Failed to copy pings to clipboard: " + ex.getMessage());
         }
@@ -550,7 +552,8 @@ public class Main extends JPanel implements ActionListener {
 
             refreshThemeColors();
 
-            Color sep = (seperatorColor != null ? seperatorColor : (gridColor != null ? gridColor : withAlpha(Color.BLACK, 40)));
+            Color sep = (seperatorColor != null ? seperatorColor : (gridColor != null
+                    ? gridColor : withAlpha(Color.BLACK, 40)));
             controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, sep));
 
             theme.setText(darkModeActive ? "Light mode" : "Dark mode");
@@ -608,7 +611,8 @@ public class Main extends JPanel implements ActionListener {
 
         Stroke normalStroke = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
         Stroke thinStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
-        Stroke dividerStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 1f, new float[]{6f, 6f}, 0f);
+        Stroke dividerStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
+                1f, new float[]{6f, 6f}, 0f);
 
         // Y-axis labels
         String yBottom = "0ms";
@@ -901,7 +905,8 @@ public class Main extends JPanel implements ActionListener {
             g2d.drawOval(px - 5, py - 5, 10, 10);
             g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
             fm = g2d.getFontMetrics();
-            String s = timestampFormat.format(new Date(ts)) + " " + (lossIndices.contains(hoveredPingIndex) ? "Request timed out" : val + "ms");
+            String s = timestampFormat.format(new Date(ts)) + " " + (lossIndices.contains(hoveredPingIndex) ?
+                    "Request timed out" : val + "ms");
             int tx = px + 6;
             int ty = py - 6;
 
@@ -1025,7 +1030,8 @@ public class Main extends JPanel implements ActionListener {
                     pingTimestamps.add(System.currentTimeMillis());
                     pingValues.add(0);
                     repaint();
-                } else if (input.startsWith("Ping-Anforderung") || input.startsWith("Ping request") || input.contains("Name or service not known")) {
+                } else if (input.startsWith("Ping-Anforderung") || input.startsWith("Ping request")
+                        || input.contains("Name or service not known")) {
                     showErrorDialog(input);
                 }
             }
