@@ -99,7 +99,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             }
         });
 
-        JPanel buttonBar = createButtonBar();
+        JPanel buttonBar = createTopBar();
         JPanel statsPanel = createStatsPanel();
 
         // Stack buttons row and labels row in the main control bar
@@ -133,10 +133,10 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         frame.setVisible(true);
     }
 
-    private JPanel createButtonBar() {
+    private JPanel createTopBar() {
         // Host and count controls
         JLabel hostLabel = new JLabel("Host:");
-        host = new JTextField(prefs.getLastHost("google.de"), 20);
+        host = new JTextField(prefs.getHost("google.de"), 20);
         // TODO: add JCheckBox instead of 0 for infinity
         JLabel countLabel = new JLabel("Count (0=infinity):");
         count = new JSpinner(new SpinnerNumberModel(0, 0, 86400, 1));
@@ -210,7 +210,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private void onWindowClosing() {
         pingController.stopPinging();
         prefs.setDarkModeActive(darkModeActive);
-        prefs.setLastHost(host.getText());
+        prefs.setHost(host.getText());
         prefs.putWindowBounds(frame.getX(), frame.getY(), frame.getWidth(), frame.getHeight(),
                 frame.getExtendedState());
     }

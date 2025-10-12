@@ -53,6 +53,7 @@ public class PingProcess {
                 return new ProcessBuilder("ping", "-n", String.valueOf(count), host);
             }
         } else {
+            // TODO: check for installed ping program and use -O option on Gnome to detect lost pings
             // Linux/Unix: continuous by default, -c for count
             if (count == 0) {
                 return new ProcessBuilder("ping", host);

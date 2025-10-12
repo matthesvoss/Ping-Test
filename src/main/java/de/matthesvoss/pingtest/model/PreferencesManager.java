@@ -4,7 +4,7 @@ import java.util.prefs.Preferences;
 
 public class PreferencesManager {
     private static final String KEY_DARK_MODE = "darkModeActive";
-    private static final String KEY_LAST_HOST = "lastHost";
+    private static final String KEY_HOST = "host";
     private static final String KEY_WINDOW_X = "windowX";
     private static final String KEY_WINDOW_Y = "windowY";
     private static final String KEY_WINDOW_W = "windowW";
@@ -25,15 +25,15 @@ public class PreferencesManager {
         prefs.putBoolean(KEY_DARK_MODE, active);
     }
 
-    public String getLastHost(String defaultValue) {
-        return prefs.get(KEY_LAST_HOST, defaultValue);
+    public String getHost(String defaultValue) {
+        return prefs.get(KEY_HOST, defaultValue);
     }
 
-    public void setLastHost(String host) {
+    public void setHost(String host) {
         if (host == null) {
-            prefs.remove(KEY_LAST_HOST);
+            prefs.remove(KEY_HOST);
         } else {
-            prefs.put(KEY_LAST_HOST, host);
+            prefs.put(KEY_HOST, host);
         }
     }
 
