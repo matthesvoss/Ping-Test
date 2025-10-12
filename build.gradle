@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.formdev:flatlaf:3.6'
+    implementation 'com.formdev:flatlaf:3.6.2'
 }
 
 java {
