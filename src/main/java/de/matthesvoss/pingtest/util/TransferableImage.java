@@ -1,4 +1,4 @@
-package de.matthesvoss.pingtest;
+package de.matthesvoss.pingtest.util;
 
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
