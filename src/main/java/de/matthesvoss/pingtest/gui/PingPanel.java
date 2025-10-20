@@ -36,15 +36,16 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private static final int HOVER_RADIUS = 30;
     private final PingController pingController;
     private final PingStatistics statistics = new PingStatistics(new MedianCalculator());
-    private final JFrame frame;
+    private final JFrame frame = new JFrame("Ping Test");
     private JPanel controlsBar;
     private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel,
             worstLabel, lastLabel, elapsedLabel;
     private JTextField host;
-    private JButton startStop, clear, copyStats, copyPings, screenshot, theme;
+    private JButton startStop, clear, share, theme;
+    private JMenuItem copyStats, copyPings, copyScreenshot, saveScreenshot;
     private JSpinner count;
     private JCheckBox infinite;
-    private final DecimalFormat lossFormat;
+    private final DecimalFormat lossFormat = new DecimalFormat("0.00");
     private final DateFormat timestampFormat = new SimpleDateFormat("HH:mm:ss.SSS");
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
     private final PreferencesManager prefs = new PreferencesManager(Main.class);
@@ -63,14 +64,12 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private String yTop;
     private int yLabelWidth;
     private double xScale, yScale;
-    // TODO: screenshot menu save or clipboard and save, separate labels further, add light colors to label backgrounds,
+    // TODO: separate labels further, add light colors to label backgrounds,
     //  add last ping to right side, end of ping spikes detection,
     //  first ping on y axis and start and stop times on x axis
 
     public PingPanel(PingController pingController) {
         this.pingController = pingController;
-        frame = new JFrame("Ping Test");
-        lossFormat = new DecimalFormat("0.00");
         lossFormat.setRoundingMode(RoundingMode.HALF_UP);
     }
 
@@ -150,16 +149,28 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         clear = button("Clear");
 
         // Right-side buttons
-        copyStats = button("Copy Stats");
-        copyPings = button("Copy Pings");
-        screenshot = button("Screenshot");
+        share = button("Share");
+        JPopupMenu shareMenu = new JPopupMenu();
+
+        copyStats = menuItem("Copy Statistics");
+        copyPings = menuItem("Copy All Pings");
+        copyScreenshot = menuItem("Copy Screenshot");
+        saveScreenshot = menuItem("Save Screenshot");
+
+        shareMenu.add(copyStats);
+        shareMenu.add(copyPings);
+        shareMenu.add(copyScreenshot);
+        shareMenu.add(saveScreenshot);
+        // Show popup menu when Share button is clicked
+        share.addActionListener(e -> shareMenu.show(share, 0, share.getHeight()));
+
         theme = button("Dark mode");
 
         JPanel leftGroup = makeFlowGroup(new FlowLayout(FlowLayout.LEFT, 6, 4),
                 hostLabel, host, countLabel, count, infinite, startStop, clear);
 
         JPanel rightGroup = makeFlowGroup(new FlowLayout(FlowLayout.RIGHT, 6, 4),
-                copyStats, copyPings, screenshot, theme);
+                share, theme);
 
         // Button bar (left/right in one row)
         JPanel buttonBar = new JPanel(new BorderLayout());
@@ -192,6 +203,12 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         b.addActionListener(this);
         b.setFocusable(false);
         return b;
+    }
+
+    private JMenuItem menuItem(String text) {
+        JMenuItem m = new JMenuItem(text);
+        m.addActionListener(this);
+        return m;
     }
 
     private JPanel makeFlowGroup(LayoutManager layout, Component... components) {
@@ -373,7 +390,9 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             copyStatsToClipboard();
         } else if (e.getSource().equals(copyPings)) {
             copyPingsToClipboard();
-        } else if (e.getSource().equals(screenshot)) {
+        } else if (e.getSource().equals(copyScreenshot)) {
+            copyScreenshotToClipboard();
+        } else if (e.getSource().equals(saveScreenshot)) {
             saveScreenshot();
         } else if (e.getSource().equals(theme)) {
             darkModeActive = !darkModeActive;
@@ -392,6 +411,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
             ThemeColors.refresh();
             controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ThemeColors.separator()));
+            share.setIcon(ResourceLoader.loadShareIcon(darkModeActive));
             theme.setText(darkModeActive ? "Light mode" : "Dark mode");
         } catch (Exception ex) {
             messageListener.onMessage("Failed to apply theme", MessageType.ERROR, ex);
@@ -755,6 +775,10 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
             g2d.drawString(s, tx, ty);
         }
+    }
+
+    private void copyScreenshotToClipboard() {
+        ScreenshotUtils.copyToClipboard(frame);
     }
 
     private void saveScreenshot() {
