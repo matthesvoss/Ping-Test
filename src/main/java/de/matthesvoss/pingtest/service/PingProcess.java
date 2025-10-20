@@ -47,7 +47,7 @@ public class PingProcess {
     private ProcessBuilder getProcessBuilder(int count) {
         if (Utils.IS_WINDOWS) {
             // Windows: -t for infinite, -n for count
-            if (count == 0) {
+            if (count == -1) {
                 return new ProcessBuilder("ping", "-t", host);
             } else {
                 return new ProcessBuilder("ping", "-n", String.valueOf(count), host);
@@ -55,7 +55,7 @@ public class PingProcess {
         } else {
             // TODO: check for installed ping program and use -O option on Gnome to detect lost pings
             // Linux/Unix: continuous by default, -c for count
-            if (count == 0) {
+            if (count == -1) {
                 return new ProcessBuilder("ping", host);
             } else {
                 return new ProcessBuilder("ping", "-c", String.valueOf(count), host);

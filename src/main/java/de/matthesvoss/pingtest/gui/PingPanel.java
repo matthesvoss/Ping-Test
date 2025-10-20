@@ -43,6 +43,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private JTextField host;
     private JButton startStop, clear, copyStats, copyPings, screenshot, theme;
     private JSpinner count;
+    private JCheckBox infinite;
     private final DecimalFormat lossFormat;
     private final DateFormat timestampFormat = new SimpleDateFormat("HH:mm:ss.SSS");
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
@@ -137,9 +138,11 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         // Host and count controls
         JLabel hostLabel = new JLabel("Host:");
         host = new JTextField(prefs.getHost("google.de"), 20);
-        // TODO: add JCheckBox instead of 0 for infinity
-        JLabel countLabel = new JLabel("Count (0=infinity):");
-        count = new JSpinner(new SpinnerNumberModel(0, 0, 86400, 1));
+        JLabel countLabel = new JLabel("Count:");
+        count = new JSpinner(new SpinnerNumberModel(10, 1, 86400, 1));
+        count.setEnabled(false);
+        infinite = new JCheckBox("Infinite", true);
+        infinite.addActionListener(e -> count.setEnabled(!infinite.isSelected()));
 
         // Main buttons
         startStop = button("Start");
@@ -153,7 +156,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         theme = button("Dark mode");
 
         JPanel leftGroup = makeFlowGroup(new FlowLayout(FlowLayout.LEFT, 6, 4),
-                hostLabel, host, countLabel, count, startStop, clear);
+                hostLabel, host, countLabel, count, infinite, startStop, clear);
 
         JPanel rightGroup = makeFlowGroup(new FlowLayout(FlowLayout.RIGHT, 6, 4),
                 copyStats, copyPings, screenshot, theme);
@@ -337,7 +340,8 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         lastHost = host.getText();
         statistics.startNewSession();
         elapsedTimer.start();
-        pingController.startPinging(host.getText(), (int) count.getValue(), this);
+        int countVal = infinite.isSelected() ? -1 : (int) count.getValue();
+        pingController.startPinging(host.getText(), countVal, this);
     }
 
     private void stopPinging() {
