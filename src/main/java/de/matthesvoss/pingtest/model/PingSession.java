@@ -38,6 +38,10 @@ public class PingSession {
         return stopTimestamp;
     }
 
+    public boolean hasPings() {
+        return !pings.isEmpty();
+    }
+
     public boolean isSingleton() {
         return pings.size() == 1;
     }

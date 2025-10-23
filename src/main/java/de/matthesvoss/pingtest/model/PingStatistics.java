@@ -24,7 +24,12 @@ public class PingStatistics {
 
     public void endCurrentSession() {
         if (!sessions.isEmpty()){
-            sessions.get(sessions.size() - 1).endSession();
+            PingSession currentSession = sessions.get(sessions.size() - 1);
+            if (currentSession.hasPings()) {
+                currentSession.endSession();
+            } else {
+                sessions.remove(currentSession);
+            }
         }
     }
 
