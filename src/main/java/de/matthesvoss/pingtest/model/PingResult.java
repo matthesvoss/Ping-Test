@@ -46,12 +46,4 @@ public class PingResult {
     public boolean isLastInSession() {
         return sequence == session.getPings().size() - 1;
     }
-
-    @Override
-    public String toString() {
-        return "PingResult{" +
-                "timestamp=" + timestamp +
-                ", rtt=" + rtt +
-                '}';
-    }
 }

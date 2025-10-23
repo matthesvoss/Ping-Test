@@ -6,7 +6,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
-public class ScreenshotUtils {
+public final class ScreenshotUtils {
     private ScreenshotUtils() {}
 
     public static BufferedImage takeScreenshot(Component component) {
