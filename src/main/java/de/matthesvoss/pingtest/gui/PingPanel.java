@@ -3,6 +3,7 @@ package de.matthesvoss.pingtest.gui;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
+import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
 import de.matthesvoss.pingtest.Main;
 import de.matthesvoss.pingtest.controller.PingController;
 import de.matthesvoss.pingtest.gui.theme.ThemeColors;
@@ -12,6 +13,8 @@ import de.matthesvoss.pingtest.model.PingStatistics;
 import de.matthesvoss.pingtest.model.PreferencesManager;
 import de.matthesvoss.pingtest.resources.ResourceLoader;
 import de.matthesvoss.pingtest.service.PingProcessListener;
+import de.matthesvoss.pingtest.service.exceptions.PingProcessException;
+import de.matthesvoss.pingtest.service.exceptions.UnknownHostException;
 import de.matthesvoss.pingtest.util.*;
 
 import javax.swing.*;
@@ -66,7 +69,8 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private double xScale, yScale;
     // TODO: separate labels further, add light colors to label backgrounds,
     //  add last ping to right side, end of ping spikes detection,
-    //  first ping on y axis and start and stop times on x axis
+    //  first ping on y axis and start and stop times on x axis, ipv4/6, light/dark theme icons,
+    //  disable settings while pinging
 
     public PingPanel(PingController pingController) {
         this.pingController = pingController;
@@ -122,7 +126,8 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         root.add(this, BorderLayout.CENTER);
         frame.setContentPane(root);
 
-        reloadTheme();
+        reloadTheme(false);
+        SwingUtilities.updateComponentTreeUI(frame);
         if (prefs.hasWindowBounds()) {
             frame.setLocation(prefs.getWindowX(frame.getX()), prefs.getWindowY(frame.getY()));
             frame.setSize(prefs.getWindowW(frame.getWidth()), prefs.getWindowH(frame.getHeight()));
@@ -211,7 +216,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         return m;
     }
 
-    private JPanel makeFlowGroup(LayoutManager layout, Component... components) {
+    private static JPanel makeFlowGroup(LayoutManager layout, Component... components) {
         JPanel p = new JPanel(layout);
         for (Component c : components) {
             p.add(c);
@@ -299,6 +304,79 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
     }
 
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource().equals(startStop)) {
+            if (startStop.getText().equals("Start")) {
+                startPinging();
+                startStop.setText("Stop");
+            } else {
+                stopPinging();
+                startStop.setText("Start");
+            }
+        } else if (e.getSource().equals(clear)) {
+            boolean running = startStop.getText().equals("Stop");
+            pingController.stopPinging();
+            resetStats();
+            resetLabels();
+            if (running) {
+                startPinging();
+            }
+        } else if (e.getSource().equals(copyStats)) {
+            copyStatsToClipboard();
+        } else if (e.getSource().equals(copyPings)) {
+            copyPingsToClipboard();
+        } else if (e.getSource().equals(copyScreenshot)) {
+            copyScreenshotToClipboard();
+        } else if (e.getSource().equals(saveScreenshot)) {
+            saveScreenshot();
+        } else if (e.getSource().equals(theme)) {
+            darkModeActive = !darkModeActive;
+            reloadTheme(true);
+        }
+    }
+
+    private void startPinging() {
+        if (!lastHost.isEmpty() && !host.getText().equals(lastHost)) {
+            clear.doClick();
+        }
+        lastHost = host.getText();
+        statistics.startNewSession();
+        elapsedTimer.start();
+        int countVal = infinite.isSelected() ? -1 : (int) count.getValue();
+        pingController.startPinging(host.getText(), countVal, this);
+    }
+
+    private void stopPinging() {
+        statistics.endCurrentSession();
+        elapsedTimer.stop();
+        updateElapsedLabel();
+        pingController.stopPinging();
+    }
+
+    private void updateElapsedLabel() {
+        List<PingSession> sessions = statistics.getSessions();
+        if (!sessions.isEmpty()) {
+            long elapsedNew = 0L;
+            for (PingSession session : sessions) {
+                if (session.hasStopped()) {
+                    elapsedNew += session.getStopTimestamp() - session.getStartTimestamp();
+                } else {
+                    elapsedNew += System.currentTimeMillis() - session.getStartTimestamp();
+                }
+            }
+            elapsedLabel.setText("Elapsed: " + Utils.formatTime(elapsedNew));
+            elapsedTime = elapsedNew;
+        }
+    }
+
+    private void resetStats() {
+        hoveredPing = null;
+        statistics.reset();
+        elapsedTimer.stop();
+        repaint();
+    }
+
     private void resetLabels() {
         sentLabel.setText("Sent: ");
         receivedLabel.setText("Received: ");
@@ -310,13 +388,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         worstLabel.setText("Worst: ms");
         lastLabel.setText("Last: ms");
         elapsedLabel.setText("Elapsed: 00:00:00");
-    }
-
-    private void resetStats() {
-        hoveredPing = null;
-        statistics.reset();
-        elapsedTimer.stop();
-        repaint();
     }
 
     private void copyStatsToClipboard() {
@@ -350,88 +421,114 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
     }
 
-    private void startPinging() {
-        if (!lastHost.isEmpty() && !host.getText().equals(lastHost)) {
-            clear.doClick();
-        }
-        lastHost = host.getText();
-        statistics.startNewSession();
-        elapsedTimer.start();
-        int countVal = infinite.isSelected() ? -1 : (int) count.getValue();
-        pingController.startPinging(host.getText(), countVal, this);
+    private void copyScreenshotToClipboard() {
+        ScreenshotUtils.copyToClipboard(frame);
     }
 
-    private void stopPinging() {
-        statistics.endCurrentSession();
-        elapsedTimer.stop();
-        updateElapsedLabel();
-        pingController.stopPinging();
-    }
+    private void saveScreenshot() {
+        BufferedImage img = ScreenshotUtils.takeScreenshot(frame);
 
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        if (e.getSource().equals(startStop)) {
-            if (startStop.getText().equals("Start")) {
-                startPinging();
-                startStop.setText("Stop");
-            } else {
-                stopPinging();
-                startStop.setText("Start");
+        // Choose file destination
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save Screenshot");
+        chooser.setAcceptAllFileFilterUsed(false);
+        FileNameExtensionFilter pngFilter = new FileNameExtensionFilter("PNG Images (*.png)", "png");
+        chooser.addChoosableFileFilter(pngFilter);
+        chooser.setFileFilter(pngFilter);
+        String ts = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        chooser.setSelectedFile(new File("PingTest_" + ts + ".png"));
+
+        if (chooser.showSaveDialog(frame) == JFileChooser.APPROVE_OPTION) {
+            try {
+                File file = chooser.getSelectedFile();
+                ScreenshotUtils.saveScreenshot(img, file);
+            } catch (Exception ex) {
+                messageListener.onMessage("Failed to save screenshot", MessageType.ERROR, ex);
             }
-        } else if (e.getSource().equals(clear)) {
-            boolean running = startStop.getText().equals("Stop");
-            pingController.stopPinging();
-            resetStats();
-            resetLabels();
-            if (running) {
-                startPinging();
-            }
-        } else if (e.getSource().equals(copyStats)) {
-            copyStatsToClipboard();
-        } else if (e.getSource().equals(copyPings)) {
-            copyPingsToClipboard();
-        } else if (e.getSource().equals(copyScreenshot)) {
-            copyScreenshotToClipboard();
-        } else if (e.getSource().equals(saveScreenshot)) {
-            saveScreenshot();
-        } else if (e.getSource().equals(theme)) {
-            darkModeActive = !darkModeActive;
-            reloadTheme();
         }
     }
 
-    private void reloadTheme() {
+    private void reloadTheme(boolean updateLaf) {
         try {
-            if (darkModeActive) {
-                FlatDarkLaf.setup();
-            } else {
-                FlatLightLaf.setup();
+            if (updateLaf) {
+                // Start animation capture
+                FlatAnimatedLafChange.showSnapshot();
+                if (darkModeActive) {
+                    FlatDarkLaf.setup();
+                } else {
+                    FlatLightLaf.setup();
+                }
+                FlatLaf.updateUI();
             }
-            FlatLaf.updateUI();
 
             ThemeColors.refresh();
             controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ThemeColors.separator()));
-            share.setIcon(ResourceLoader.loadShareIcon(darkModeActive));
+            ImageIcon shareIcon = ResourceLoader.loadShareIcon(darkModeActive);
+            share.setIcon(scaleIconToTextHeight(shareIcon, share));
             theme.setText(darkModeActive ? "Light mode" : "Dark mode");
+
+            if (updateLaf) {
+                // Finish animation transition
+                FlatAnimatedLafChange.hideSnapshotWithAnimation();
+            }
         } catch (Exception ex) {
             messageListener.onMessage("Failed to apply theme", MessageType.ERROR, ex);
         }
     }
 
-    private void updateElapsedLabel() {
-        List<PingSession> sessions = statistics.getSessions();
-        if (!sessions.isEmpty()) {
-            long elapsedNew = 0L;
-            for (PingSession session : sessions) {
-                if (session.hasStopped()) {
-                    elapsedNew += session.getStopTimestamp() - session.getStartTimestamp();
-                } else {
-                    elapsedNew += System.currentTimeMillis() - session.getStartTimestamp();
-                } 
-            }
-            elapsedLabel.setText("Elapsed: " + Utils.formatTime(elapsedNew));
-            elapsedTime = elapsedNew;
+    private static Icon scaleIconToTextHeight(ImageIcon icon, JButton button) {
+        // Estimate target height based on font metrics
+        FontMetrics fm = button.getFontMetrics(button.getFont());
+        int textHeight = fm.getAscent();
+
+        int iconWidth = icon.getIconWidth();
+        int iconHeight = icon.getIconHeight();
+
+        if (iconHeight == textHeight) {
+            return icon;
         }
+
+        float scale = (float) textHeight / iconHeight;
+        int newW = Math.round(iconWidth * scale);
+        int newH = Math.round(iconHeight * scale);
+
+        Image image = icon.getImage();
+        Image scaled = image.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
+        return new ImageIcon(scaled);
+    }
+
+    @Override
+    public void onPing(PingResult ping) {
+        statistics.addPing(ping);
+        updateStatsLabels();
+        repaint();
+    }
+
+    private void updateStatsLabels() {
+        sentLabel.setText("Sent: " + statistics.getSent());
+        receivedLabel.setText("Received: " + statistics.getReceived());
+        lostLabel.setText("Lost: " + statistics.getLost());
+        double loss = statistics.getLossPercent();
+        lossLabel.setText("Loss: " + lossFormat.format(loss) + "%");
+        bestLabel.setText("Best: " + statistics.getBest() + "ms");
+        worstLabel.setText("Worst: " + statistics.getWorst() + "ms");
+        averageLabel.setText("Average: " + statistics.getAverage() + "ms");
+        medianLabel.setText("Median: " + statistics.getMedian() + "ms");
+        lastLabel.setText("Last: " + statistics.getLast() + "ms");
+    }
+
+    @Override
+    public void onProcessFinished() {
+        statistics.endCurrentSession();
+        elapsedTimer.stop();
+        updateElapsedLabel();
+
+        startStop.setText("Start");
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        return new Dimension(1600, 800);
     }
 
     @Override
@@ -498,7 +595,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         // X-axis labels
         startTs = statistics.getStartOfFirstSession();
         long lastTs = statistics.getTimestampOfLastPing();
-        plotTimeSpan = lastTs - startTs;
+        plotTimeSpan = Math.max(lastTs - startTs, 0L);
 
         String xLeft = "0s";
         String xRight = Utils.formatTime(plotTimeSpan);
@@ -775,66 +872,5 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
             g2d.drawString(s, tx, ty);
         }
-    }
-
-    private void copyScreenshotToClipboard() {
-        ScreenshotUtils.copyToClipboard(frame);
-    }
-
-    private void saveScreenshot() {
-        BufferedImage img = ScreenshotUtils.takeScreenshot(frame);
-
-        // Choose file destination
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Save Screenshot");
-        chooser.setAcceptAllFileFilterUsed(false);
-        FileNameExtensionFilter pngFilter = new FileNameExtensionFilter("PNG Images (*.png)", "png");
-        chooser.addChoosableFileFilter(pngFilter);
-        chooser.setFileFilter(pngFilter);
-        String ts = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        chooser.setSelectedFile(new File("PingTest_" + ts + ".png"));
-
-        if (chooser.showSaveDialog(frame) == JFileChooser.APPROVE_OPTION) {
-            try {
-                File file = chooser.getSelectedFile();
-                ScreenshotUtils.saveScreenshot(img, file);
-            } catch (Exception ex) {
-                messageListener.onMessage("Failed to save screenshot", MessageType.ERROR, ex);
-            }
-        }
-    }
-
-    @Override
-    public void onProcessFinished() {
-        statistics.endCurrentSession();
-        elapsedTimer.stop();
-        updateElapsedLabel();
-
-        startStop.setText("Start");
-    }
-
-    @Override
-    public void onPing(PingResult ping) {
-        statistics.addPing(ping);
-        updateStatsLabels();
-        repaint();
-    }
-
-    private void updateStatsLabels() {
-        sentLabel.setText("Sent: " + statistics.getSent());
-        receivedLabel.setText("Received: " + statistics.getReceived());
-        lostLabel.setText("Lost: " + statistics.getLost());
-        double loss = statistics.getLossPercent();
-        lossLabel.setText("Loss: " + lossFormat.format(loss) + "%");
-        bestLabel.setText("Best: " + statistics.getBest() + "ms");
-        worstLabel.setText("Worst: " + statistics.getWorst() + "ms");
-        averageLabel.setText("Average: " + statistics.getAverage() + "ms");
-        medianLabel.setText("Median: " + statistics.getMedian() + "ms");
-        lastLabel.setText("Last: " + statistics.getLast() + "ms");
-    }
-
-    @Override
-    public Dimension getPreferredSize() {
-        return new Dimension(1000, 1000);
     }
 }
