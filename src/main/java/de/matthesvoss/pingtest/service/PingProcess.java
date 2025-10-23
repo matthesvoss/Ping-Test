@@ -1,8 +1,8 @@
 package de.matthesvoss.pingtest.service;
 
 import de.matthesvoss.pingtest.model.PingResult;
-import de.matthesvoss.pingtest.util.MessageListener;
-import de.matthesvoss.pingtest.util.MessageType;
+import de.matthesvoss.pingtest.service.exceptions.PingProcessException;
+import de.matthesvoss.pingtest.service.exceptions.UnknownHostException;
 import de.matthesvoss.pingtest.util.Utils;
 
 import javax.swing.*;
@@ -13,17 +13,16 @@ import java.util.concurrent.TimeUnit;
 
 public class PingProcess {
     private final String host;
-    private final MessageListener messageListener;
-    private final PingProcessListener pingListener;
+    private final PingProcessListener processListener;
+    private final PingParser parser = new PingParser();
     private Process pingProcess;
     private InputStreamWorker inputStreamWorker;
     private Thread errorStreamReader;
     private volatile boolean running;
 
-    public PingProcess(String host, MessageListener messageListener, PingProcessListener pingListener) {
+    public PingProcess(String host, PingProcessListener processListener) {
         this.host = host;
-        this.messageListener = messageListener;
-        this.pingListener = pingListener;
+        this.processListener = processListener;
     }
 
     public synchronized void start(int count) {
@@ -40,7 +39,7 @@ public class PingProcess {
 
             errorStreamReader = createAndStartErrorStreamReader();
         } catch (Exception ex) {
-            messageListener.onMessage("Failed to start ping process", MessageType.ERROR, ex);
+            processListener.onProcessException(new PingProcessException("Failed to start ping process", ex));
         }
     }
 
@@ -48,17 +47,16 @@ public class PingProcess {
         if (Utils.IS_WINDOWS) {
             // Windows: -t for infinite, -n for count
             if (count == -1) {
-                return new ProcessBuilder("ping", "-t", host);
+                return new ProcessBuilder("ping", "-w", "1000", "-t", host);
             } else {
-                return new ProcessBuilder("ping", "-n", String.valueOf(count), host);
+                return new ProcessBuilder("ping", "-w", "1000", "-n", String.valueOf(count), host);
             }
         } else {
-            // TODO: check for installed ping program and use -O option on Gnome to detect lost pings
-            // Linux/Unix: continuous by default, -c for count
+            // Linux: continuous by default, -c for count
             if (count == -1) {
-                return new ProcessBuilder("ping", host);
+                return new ProcessBuilder("ping", "-O", "-n", "-i", "1", "-W", "1", host);
             } else {
-                return new ProcessBuilder("ping", "-c", String.valueOf(count), host);
+                return new ProcessBuilder("ping", "-O", "-n", "-i", "1", "-W", "1", "-c", String.valueOf(count), host);
             }
         }
     }
@@ -76,27 +74,23 @@ public class PingProcess {
         }
 
         if (isAlive()) {
-            try {
-                // Request graceful shutdown of the specific process
-                pingProcess.destroy();
+            // Request graceful shutdown of the specific process
+            pingProcess.destroy();
 
-                // Asynchronously enforce after a short delay if still alive
-                new Thread(() -> {
-                    try {
-                        if (isAlive()) {
-                            // Wait a bit for graceful shutdown
-                            boolean exited = pingProcess.waitFor(2000, TimeUnit.MILLISECONDS);
-                            if (!exited && pingProcess.isAlive()) {
-                                pingProcess.destroyForcibly();
-                            }
+            // Asynchronously enforce after a short delay if still alive
+            new Thread(() -> {
+                try {
+                    if (isAlive()) {
+                        // Wait a bit for graceful shutdown
+                        boolean exited = pingProcess.waitFor(2000, TimeUnit.MILLISECONDS);
+                        if (!exited && pingProcess.isAlive()) {
+                            pingProcess.destroyForcibly();
                         }
-                    } catch (Exception ex) {
-                        messageListener.onMessage("Failed to forcibly stop ping process", MessageType.ERROR, ex);
                     }
-                }, "PingProcessStopEnforcer").start();
-            } catch (Exception ex) {
-                messageListener.onMessage("Failed to stop ping process", MessageType.ERROR, ex);
-            }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }, "PingProcessStopEnforcer").start();
         }
     }
 
@@ -109,20 +103,21 @@ public class PingProcess {
     }
 
     private class InputStreamWorker extends SwingWorker<Void, PingResult> {
-        private final PingParser parser = new PingParser(messageListener);
-
         @Override
         protected Void doInBackground() {
             try (Scanner s = new Scanner(pingProcess.getInputStream(), Charset.defaultCharset().name())) {
                 while (!isCancelled() && s.hasNext()) {
                     String line = s.nextLine();
-                    PingResult ping = parser.parseLine(line);
+                    PingResult ping = parser.parseInputLine(line);
                     if (ping != null) {
                         publish(ping);
                     }
                 }
+            } catch (UnknownHostException ex) {
+                processListener.onProcessException(ex);
             } catch (Exception ex) {
-                messageListener.onMessage("Error reading ping process input stream", MessageType.ERROR, ex);
+                processListener.onProcessException(
+                        new PingProcessException("Error reading ping process input stream", ex));
             }
             return null;
         }
@@ -133,7 +128,7 @@ public class PingProcess {
                 return;
             }
             for (PingResult ping : chunks) {
-                pingListener.onPing(ping);
+                processListener.onPing(ping);
             }
         }
 
@@ -143,7 +138,7 @@ public class PingProcess {
                 return;
             }
             running = false;
-            pingListener.onProcessFinished();
+            processListener.onProcessFinished();
             if (errorStreamReader != null && errorStreamReader.isAlive()) {
                 errorStreamReader.interrupt();
             }
@@ -155,10 +150,15 @@ public class PingProcess {
             try (Scanner s = new Scanner(pingProcess.getErrorStream(), Charset.defaultCharset().name())) {
                 while (!Thread.currentThread().isInterrupted() && s.hasNextLine()) {
                     String line = s.nextLine();
-                    messageListener.onMessage(line, MessageType.ERROR);
+                    try {
+                        parser.parseErrorLine(line);
+                    } catch (PingProcessException ex) {
+                        processListener.onProcessException(ex);
+                    }
                 }
             } catch (Exception ex) {
-                messageListener.onMessage("Error reading ping process error stream", MessageType.ERROR, ex);
+                processListener.onProcessException(
+                        new PingProcessException("Error reading ping process error stream", ex));
             }
         }, "PingProcessErrorStreamReader");
 

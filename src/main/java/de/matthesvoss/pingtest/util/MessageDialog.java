@@ -4,6 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 public final class MessageDialog {
+    private MessageDialog() {}
+
     public static void showInfo(Component parent, String message) {
         SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(
@@ -26,22 +28,28 @@ public final class MessageDialog {
         );
     }
 
-    public static void showError(Component parent, String message) {
-        showError(parent, message, null);
-    }
-
-    public static void showError(Component parent, String message, Exception ex) {
+    public static void showError(Component parent, String message, Throwable throwable) {
+        if (message == null || message.isEmpty()) {
+            message = "An error occurred";
+        }
+        if (throwable != null) {
+            String exMessage = throwable.getMessage();
+            if (exMessage != null && !exMessage.equalsIgnoreCase(message)) {
+                message += "\n" + exMessage;
+            }
+        }
+        String finalMessage = message;
         SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(
                         parent,
-                        message + (ex != null ? "\n" + ex.getMessage() : ""),
+                        finalMessage,
                         "Error",
                         JOptionPane.ERROR_MESSAGE
                 )
         );
     }
 
-    public static void show(Component parent, String message, MessageType type, Exception ex) {
+    public static void show(Component parent, String message, MessageType type, Throwable throwable) {
         switch (type) {
             case INFO:
                 showInfo(parent, message);
@@ -50,7 +58,7 @@ public final class MessageDialog {
                 showWarning(parent, message);
                 break;
             case ERROR:
-                showError(parent, message, ex);
+                showError(parent, message, throwable);
                 break;
         }
     }

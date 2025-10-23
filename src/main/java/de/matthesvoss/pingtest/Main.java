@@ -14,8 +14,6 @@ public class Main {
 
         MessageListener messageListener = (msg, type, ex) ->
                 MessageDialog.show(gui.getFrame(), msg, type, ex);
-
-        controller.setMessageListener(messageListener);
         gui.setMessageListener(messageListener);
 
         SwingUtilities.invokeLater(gui::createAndShow);

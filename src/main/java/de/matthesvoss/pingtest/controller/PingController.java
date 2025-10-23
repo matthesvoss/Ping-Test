@@ -2,15 +2,13 @@ package de.matthesvoss.pingtest.controller;
 
 import de.matthesvoss.pingtest.service.PingProcess;
 import de.matthesvoss.pingtest.service.PingProcessListener;
-import de.matthesvoss.pingtest.util.MessageListener;
 
 public class PingController {
     private PingProcess process;
-    private MessageListener messageListener;
 
-    public void startPinging(String host, int count, PingProcessListener pingListener) {
+    public void startPinging(String host, int count, PingProcessListener processListener) {
         stopPinging();
-        process = new PingProcess(host, messageListener, pingListener);
+        process = new PingProcess(host, processListener);
         process.start(count);
     }
 
@@ -18,9 +16,5 @@ public class PingController {
         if (process != null && process.isRunning()) {
             process.stop();
         }
-    }
-
-    public void setMessageListener(MessageListener messageListener) {
-        this.messageListener = messageListener;
     }
 }
