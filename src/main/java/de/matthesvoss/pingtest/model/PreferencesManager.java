@@ -3,7 +3,7 @@ package de.matthesvoss.pingtest.model;
 import java.util.prefs.Preferences;
 
 public class PreferencesManager {
-    private static final String KEY_DARK_MODE = "darkModeActive";
+    private static final String KEY_DARK_THEME = "darkTheme";
     private static final String KEY_HOST = "host";
     private static final String KEY_WINDOW_X = "windowX";
     private static final String KEY_WINDOW_Y = "windowY";
@@ -17,12 +17,12 @@ public class PreferencesManager {
         this.prefs = Preferences.userNodeForPackage(prefsNodeClass);
     }
 
-    public boolean isDarkModeActive(boolean defaultValue) {
-        return prefs.getBoolean(KEY_DARK_MODE, defaultValue);
+    public boolean isDarkTheme(boolean defaultValue) {
+        return prefs.getBoolean(KEY_DARK_THEME, defaultValue);
     }
 
-    public void setDarkModeActive(boolean active) {
-        prefs.putBoolean(KEY_DARK_MODE, active);
+    public void setDarkTheme(boolean active) {
+        prefs.putBoolean(KEY_DARK_THEME, active);
     }
 
     public String getHost(String defaultValue) {

@@ -7,6 +7,7 @@ import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
 import de.matthesvoss.pingtest.Main;
 import de.matthesvoss.pingtest.controller.PingController;
 import de.matthesvoss.pingtest.gui.theme.ThemeColors;
+import de.matthesvoss.pingtest.gui.theme.ThemeManager;
 import de.matthesvoss.pingtest.model.PingResult;
 import de.matthesvoss.pingtest.model.PingSession;
 import de.matthesvoss.pingtest.model.PingStatistics;
@@ -60,7 +61,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private MessageListener messageListener;
     private PingResult hoveredPing;
     private String lastHost = "";
-    private boolean darkModeActive;
     private int plotLeft, plotRight, plotTop, plotBottom, plotW, plotH;
     private long startTs, plotTimeSpan, elapsedTime;
     private FontMetrics fm;
@@ -80,8 +80,9 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     public void createAndShow() {
         // Initialize FlatLaf based on persisted preference before creating UI
         FlatLaf.registerCustomDefaultsSource("de.matthesvoss.pingtest.themes");
-        darkModeActive = prefs.isDarkModeActive(false);
-        if (darkModeActive) {
+        boolean isDarkTheme = prefs.isDarkTheme(true);
+        ThemeManager.setDarkTheme(isDarkTheme);
+        if (isDarkTheme) {
             FlatDarkLaf.setup();
         } else {
             FlatLightLaf.setup();
@@ -234,7 +235,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
     private void onWindowClosing() {
         pingController.stopPinging();
-        prefs.setDarkModeActive(darkModeActive);
+        prefs.setDarkTheme(ThemeManager.isDarkTheme());
         prefs.setHost(host.getText());
         prefs.putWindowBounds(frame.getX(), frame.getY(), frame.getWidth(), frame.getHeight(),
                 frame.getExtendedState());
@@ -331,7 +332,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         } else if (e.getSource().equals(saveScreenshot)) {
             saveScreenshot();
         } else if (e.getSource().equals(theme)) {
-            darkModeActive = !darkModeActive;
+            ThemeManager.switchTheme();
             reloadTheme(true);
         }
     }
@@ -453,7 +454,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             if (updateLaf) {
                 // Start animation capture
                 FlatAnimatedLafChange.showSnapshot();
-                if (darkModeActive) {
+                if (ThemeManager.isDarkTheme()) {
                     FlatDarkLaf.setup();
                 } else {
                     FlatLightLaf.setup();
@@ -465,7 +466,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ThemeColors.separator()));
             ImageIcon shareIcon = ResourceLoader.loadShareIcon(darkModeActive);
             share.setIcon(scaleIconToTextHeight(shareIcon, share));
-            theme.setText(darkModeActive ? "Light mode" : "Dark mode");
+            theme.setText(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
 
             if (updateLaf) {
                 // Finish animation transition
