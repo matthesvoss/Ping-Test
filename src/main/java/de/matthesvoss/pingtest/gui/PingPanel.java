@@ -150,7 +150,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private JPanel createTopBar() {
         // Host and count controls
         JLabel hostLabel = new JLabel("Host:");
-        host = new JTextField(prefs.getHost("google.de"), 20);
+        host = new JTextField(prefs.getHost("google.com"), 20);
         JLabel countLabel = new JLabel("Count:");
         count = new JSpinner(new SpinnerNumberModel(10, 1, 86400, 1));
         count.setEnabled(false);
