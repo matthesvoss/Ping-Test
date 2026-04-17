@@ -1,6 +1,7 @@
 package de.matthesvoss.pingtest.model;
 
 import de.matthesvoss.pingtest.util.MedianCalculator;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -9,7 +10,7 @@ public class PingStatistics {
     private int sent, received, lost;
     private int best = Integer.MAX_VALUE;
     private int worst = -1;
-    private int last = -1;
+    private PingResult bestPing, worstPing, lastPing;
     private long runningSumOkPings;
     private final List<PingSession> sessions = new ArrayList<>();
     private final MedianCalculator medianCalc;
@@ -23,7 +24,7 @@ public class PingStatistics {
     }
 
     public void endCurrentSession() {
-        if (!sessions.isEmpty()){
+        if (!sessions.isEmpty()) {
             PingSession currentSession = sessions.get(sessions.size() - 1);
             if (currentSession.hasPings()) {
                 currentSession.endSession();
@@ -36,7 +37,7 @@ public class PingStatistics {
     public List<PingSession> getSessions() {
         return sessions;
     }
-    
+
     public boolean hasStatistics() {
         return sent != 0;
     }
@@ -56,7 +57,7 @@ public class PingStatistics {
         runningSumOkPings = 0L;
         best = Integer.MAX_VALUE;
         worst = -1;
-        last = -1;
+        bestPing = worstPing = lastPing = null;
         sessions.clear();
         medianCalc.clear();
     }
@@ -69,20 +70,21 @@ public class PingStatistics {
         sent++;
         if (ping.isTimeout()) {
             lost++;
-            last = -1;
         } else {
             received++;
             int rtt = ping.getRtt();
             runningSumOkPings += rtt;
             if (rtt < best) {
                 best = rtt;
+                bestPing = ping;
             }
             if (rtt > worst) {
                 worst = rtt;
+                worstPing = ping;
             }
-            last = rtt;
             medianCalc.add(rtt);
         }
+        lastPing = ping;
     }
 
     public int getSent() {
@@ -101,16 +103,16 @@ public class PingStatistics {
         return sent == 0 ? 0.0 : (lost * 100.0 / sent);
     }
 
-    public int getBest() {
-        return best == Integer.MAX_VALUE ? -1 : best;
+    public PingResult getBest() {
+        return bestPing;
     }
 
-    public int getWorst() {
-        return worst;
+    public PingResult getWorst() {
+        return worstPing;
     }
 
-    public int getLast() {
-        return last;
+    public PingResult getLast() {
+        return lastPing;
     }
 
     public int getAverage() {
@@ -130,14 +132,6 @@ public class PingStatistics {
     }
 
     public long getTimestampOfLastPing() {
-        PingSession session = getCurrentSession();
-        if (session == null) {
-            return 0;
-        }
-        List<PingResult> pings = session.getPings();
-        if (pings == null || pings.isEmpty()) {
-            return 0;
-        }
-        return pings.get(pings.size() - 1).getTimestamp();
+        return lastPing == null ? 0 : lastPing.getTimestamp();
     }
 }

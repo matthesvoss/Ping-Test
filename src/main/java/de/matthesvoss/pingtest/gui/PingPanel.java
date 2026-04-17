@@ -280,7 +280,8 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         PingResult closestPing = null;
         int smallestD2 = HOVER_RADIUS * HOVER_RADIUS;
 
-        int worst = statistics.getWorst();
+        PingResult worstPing = statistics.getWorst();
+        int worst = worstPing == null || worstPing.isTimeout() ? -1 : worstPing.getRtt();
         double yScale = worst > 0 ? (double) plotH / worst : 0.0;
         double cursorY = plotBottom - cursorPanelY;
 
@@ -489,17 +490,21 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         repaint();
     }
 
+    private String formatPing(PingResult ping) {
+        return (ping == null || ping.isTimeout() ? "-" : ping.getRtt()) + "ms";
+    }
+
     private void updateStatsLabels() {
         sentLabel.setText("Sent: " + statistics.getSent());
         receivedLabel.setText("Received: " + statistics.getReceived());
         lostLabel.setText("Lost: " + statistics.getLost());
         double loss = statistics.getLossPercent();
         lossLabel.setText("Loss: " + lossFormat.format(loss) + "%");
-        bestLabel.setText("Best: " + statistics.getBest() + "ms");
-        worstLabel.setText("Worst: " + statistics.getWorst() + "ms");
+        bestLabel.setText("Best: " + formatPing(statistics.getBest()));
+        worstLabel.setText("Worst: " + formatPing(statistics.getWorst()));
         averageLabel.setText("Average: " + statistics.getAverage() + "ms");
         medianLabel.setText("Median: " + statistics.getMedian() + "ms");
-        lastLabel.setText("Last: " + statistics.getLast() + "ms");
+        lastLabel.setText("Last: " + formatPing(statistics.getLast()));
     }
 
     @Override
@@ -531,17 +536,20 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
+        PingResult worstPing = statistics.getWorst();
+        int worst = worstPing == null || worstPing.isTimeout() ? -1 : worstPing.getRtt();
+
         Graphics2D g2d = (Graphics2D) g.create();
         try {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            computePlotBounds(g2d);
+            computePlotBounds(g2d, worst);
 
             drawAxes(g2d);
             if (plotW == 0 || plotH == 0) {
                 return;
             }
-            drawBands(g2d);
+            drawBands(g2d, worst);
             if (!statistics.hasStatistics()) {
                 return;
             }
@@ -552,9 +560,8 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
     }
 
-    private void computePlotBounds(Graphics2D g2d) {
+    private void computePlotBounds(Graphics2D g2d, int worst) {
         fm = g2d.getFontMetrics();
-        int worst = statistics.getWorst();
         yTop = (worst <= 0 ? "0" : worst) + "ms";
         yLabelWidth = fm.stringWidth(yTop);
         int xLabelHeight = fm.getHeight();
@@ -608,8 +615,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         g2d.drawLine(plotRight, plotBottom, plotRight, plotBottom + tickSize);
     }
 
-    private void drawBands(Graphics2D g2d) {
-        int worst = statistics.getWorst();
+    private void drawBands(Graphics2D g2d, int worst) {
         xScale = plotTimeSpan > 0 ? (double) plotW / plotTimeSpan : 0.0;
         yScale = worst > 0 ? (double) plotH / worst : 0.0;
 
