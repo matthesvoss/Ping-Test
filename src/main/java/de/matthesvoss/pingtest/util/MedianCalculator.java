@@ -19,18 +19,17 @@ public class MedianCalculator {
      */
     @SuppressWarnings("ConstantConditions")
     public void add(int value) {
-        // Insert
+        // Insert and rebalance
         if (low.isEmpty() || value <= low.peek()) {
             low.offer(value);
+            if (low.size() > high.size() + 1) {
+                high.offer(low.poll());
+            }
         } else {
             high.offer(value);
-        }
-
-        // Rebalance
-        if (low.size() > high.size() + 1) {
-            high.offer(low.poll());
-        } else if (high.size() > low.size()) {
-            low.offer(high.poll());
+            if (high.size() > low.size()) {
+                low.offer(high.poll());
+            }
         }
 
         // Compute median
