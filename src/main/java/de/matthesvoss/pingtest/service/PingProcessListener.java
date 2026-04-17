@@ -8,5 +8,6 @@ public interface PingProcessListener {
 
     void onProcessException(PingProcessException ex);
 
-    default void onProcessFinished() {}
+    default void onProcessFinished() {
+    }
 }

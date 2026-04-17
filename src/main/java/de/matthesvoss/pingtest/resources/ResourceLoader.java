@@ -3,7 +3,6 @@ package de.matthesvoss.pingtest.resources;
 import de.matthesvoss.pingtest.gui.theme.ThemeManager;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;

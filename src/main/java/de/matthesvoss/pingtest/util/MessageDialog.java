@@ -4,7 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 public final class MessageDialog {
-    private MessageDialog() {}
+    private MessageDialog() {
+    }
 
     public static void showInfo(Component parent, String message) {
         SwingUtilities.invokeLater(() ->

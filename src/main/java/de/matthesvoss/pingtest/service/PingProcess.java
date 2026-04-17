@@ -102,6 +102,28 @@ public class PingProcess {
         return running;
     }
 
+    private Thread createAndStartErrorStreamReader() {
+        Thread t = new Thread(() -> {
+            try (Scanner s = new Scanner(pingProcess.getErrorStream(), Charset.defaultCharset().name())) {
+                while (!Thread.currentThread().isInterrupted() && s.hasNextLine()) {
+                    String line = s.nextLine();
+                    try {
+                        parser.parseErrorLine(line);
+                    } catch (PingProcessException ex) {
+                        processListener.onProcessException(ex);
+                    }
+                }
+            } catch (Exception ex) {
+                processListener.onProcessException(
+                        new PingProcessException("Error reading ping process error stream", ex));
+            }
+        }, "PingProcessErrorStreamReader");
+
+        t.setDaemon(true);
+        t.start();
+        return t;
+    }
+
     private class InputStreamWorker extends SwingWorker<Void, PingResult> {
         @Override
         protected Void doInBackground() {
@@ -134,7 +156,7 @@ public class PingProcess {
 
         @Override
         protected void done() {
-            if (!running){
+            if (!running) {
                 return;
             }
             running = false;
@@ -143,27 +165,5 @@ public class PingProcess {
                 errorStreamReader.interrupt();
             }
         }
-    }
-
-    private Thread createAndStartErrorStreamReader() {
-        Thread t = new Thread(() -> {
-            try (Scanner s = new Scanner(pingProcess.getErrorStream(), Charset.defaultCharset().name())) {
-                while (!Thread.currentThread().isInterrupted() && s.hasNextLine()) {
-                    String line = s.nextLine();
-                    try {
-                        parser.parseErrorLine(line);
-                    } catch (PingProcessException ex) {
-                        processListener.onProcessException(ex);
-                    }
-                }
-            } catch (Exception ex) {
-                processListener.onProcessException(
-                        new PingProcessException("Error reading ping process error stream", ex));
-            }
-        }, "PingProcessErrorStreamReader");
-
-        t.setDaemon(true);
-        t.start();
-        return t;
     }
 }

@@ -7,13 +7,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class PingStatistics {
+    private final List<PingSession> sessions = new ArrayList<>();
+    private final MedianCalculator medianCalc;
     private int sent, received, lost;
     private int best = Integer.MAX_VALUE;
     private int worst = -1;
     private PingResult bestPing, worstPing, lastPing;
     private long runningSumOkPings;
-    private final List<PingSession> sessions = new ArrayList<>();
-    private final MedianCalculator medianCalc;
 
     public PingStatistics(MedianCalculator medianCalc) {
         this.medianCalc = medianCalc;

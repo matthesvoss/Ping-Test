@@ -27,7 +27,9 @@ public class ScaledIcon implements Icon {
         targetWidth = (int) (icon.getWidth() * scale);
     }
 
-    /** Draw the icon scaled to the component's current font height */
+    /**
+     * Draw the icon scaled to the component's current font height
+     */
     @Override
     public void paintIcon(Component c, Graphics g, int x, int y) {
         if (icon == null) {

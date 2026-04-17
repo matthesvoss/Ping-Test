@@ -6,7 +6,8 @@ import java.awt.datatransfer.StringSelection;
 public final class Utils {
     public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
 
-    private Utils() {}
+    private Utils() {
+    }
 
     public static void copyToClipboard(String text) {
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text), null);

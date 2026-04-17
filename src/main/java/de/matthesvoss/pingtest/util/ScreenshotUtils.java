@@ -7,7 +7,8 @@ import java.io.File;
 import java.io.IOException;
 
 public final class ScreenshotUtils {
-    private ScreenshotUtils() {}
+    private ScreenshotUtils() {
+    }
 
     public static BufferedImage takeScreenshot(Component component) {
         BufferedImage img = new BufferedImage(component.getWidth(), component.getHeight(), BufferedImage.TYPE_INT_ARGB);

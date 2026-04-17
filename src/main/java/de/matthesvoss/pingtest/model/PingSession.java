@@ -5,8 +5,8 @@ import java.util.List;
 
 public class PingSession {
     private final long startTimestamp;
-    private long stopTimestamp;
     private final List<PingResult> pings = new ArrayList<>();
+    private long stopTimestamp;
 
     public PingSession(long startTimestamp) {
         this.startTimestamp = startTimestamp;

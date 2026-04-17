@@ -41,14 +41,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private final PingController pingController;
     private final PingStatistics statistics = new PingStatistics(new MedianCalculator());
     private final JFrame frame = new JFrame("Ping Test");
-    private JPanel controlsBar;
-    private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel,
-            worstLabel, lastLabel, elapsedLabel;
-    private JTextField host;
-    private JButton startStop, clear, share, theme;
-    private JMenuItem copyStats, copyPings, copyScreenshot, saveScreenshot;
-    private JSpinner count;
-    private JCheckBox infinite;
     private final DecimalFormat lossFormat = new DecimalFormat("0.00");
     private final DateFormat timestampFormat = new SimpleDateFormat("HH:mm:ss.SSS");
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
@@ -58,6 +50,14 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private final Stroke dividerStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
             1f, new float[]{6f, 6f}, 0f);
     private final int padding = 8, r = 3;
+    private JPanel controlsBar;
+    private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel,
+            worstLabel, lastLabel, elapsedLabel;
+    private JTextField host;
+    private JButton startStop, clear, share, theme;
+    private JMenuItem copyStats, copyPings, copyScreenshot, saveScreenshot;
+    private JSpinner count;
+    private JCheckBox infinite;
     private MessageListener messageListener;
     private PingResult hoveredPing;
     private String lastHost = "";
@@ -75,6 +75,14 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     public PingPanel(PingController pingController) {
         this.pingController = pingController;
         lossFormat.setRoundingMode(RoundingMode.HALF_UP);
+    }
+
+    private static JPanel makeFlowGroup(LayoutManager layout, Component... components) {
+        JPanel p = new JPanel(layout);
+        for (Component c : components) {
+            p.add(c);
+        }
+        return p;
     }
 
     public void createAndShow() {
@@ -222,14 +230,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         JMenuItem m = new JMenuItem(text);
         m.addActionListener(this);
         return m;
-    }
-
-    private static JPanel makeFlowGroup(LayoutManager layout, Component... components) {
-        JPanel p = new JPanel(layout);
-        for (Component c : components) {
-            p.add(c);
-        }
-        return p;
     }
 
     public JFrame getFrame() {
@@ -401,11 +401,9 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
     private void copyStatsToClipboard() {
         try {
-            String stats = String.join("\t", new String[]{
-                    sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(), lossLabel.getText(),
-                    bestLabel.getText(), averageLabel.getText(), medianLabel.getText(), worstLabel.getText(),
-                    lastLabel.getText(), elapsedLabel.getText()
-            });
+            String stats = String.join("\t", sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(),
+                    lossLabel.getText(), bestLabel.getText(), averageLabel.getText(), medianLabel.getText(),
+                    worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText());
             Utils.copyToClipboard(stats);
         } catch (Exception ex) {
             messageListener.onMessage("Failed to copy statistics to clipboard", MessageType.ERROR, ex);
@@ -415,11 +413,9 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private void copyPingsToClipboard() {
         try {
             ArrayList<String> lines = new ArrayList<>();
-            lines.add(String.join("\t", new String[]{
-                    sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(), lossLabel.getText(),
-                    bestLabel.getText(), averageLabel.getText(), medianLabel.getText(), worstLabel.getText(),
-                    lastLabel.getText(), elapsedLabel.getText()
-            }));
+            lines.add(String.join("\t", sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(),
+                    lossLabel.getText(), bestLabel.getText(), averageLabel.getText(), medianLabel.getText(),
+                    worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText()));
             for (PingResult ping : statistics.getAllPings()) {
                 String value = ping.isTimeout() ? "Request timed out" : ping.getRtt() + "ms";
                 lines.add(timestampFormat.format(new Date(ping.getTimestamp())) + "\t" + value);

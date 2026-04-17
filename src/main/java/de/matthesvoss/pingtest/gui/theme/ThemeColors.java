@@ -11,7 +11,8 @@ public class ThemeColors {
     private static Color dividerColor;
     private static Color separatorColor;
 
-    private ThemeColors() {}
+    private ThemeColors() {
+    }
 
     public static void refresh() {
         Color fgColor = UIManager.getColor("Label.foreground");
