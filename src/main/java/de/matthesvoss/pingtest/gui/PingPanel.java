@@ -651,10 +651,12 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             g2d.setColor(ThemeColors.divider());
             g2d.setStroke(dividerStroke);
 
-            for (int i = 1; i < sessions.size(); i++) {
+            for (int i = 0; i < sessions.size(); i++) {
                 PingSession session = sessions.get(i);
-                drawDivider(g2d, session.getStartTimestamp());
-                if (i != sessions.size() - 1 || !session.hasStopped()) {
+                if (i != 0) {
+                    drawDivider(g2d, session.getStartTimestamp());
+                }
+                if (i != sessions.size() - 1 && session.hasStopped()) {
                     drawDivider(g2d, session.getStopTimestamp());
                 }
             }
