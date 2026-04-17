@@ -30,6 +30,7 @@ import java.io.File;
 import java.math.RoundingMode;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -352,7 +353,21 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         lastHost = host.getText();
         statistics.startNewSession();
         elapsedTimer.start();
-        int countVal = infinite.isSelected() ? -1 : (int) count.getValue();
+
+        int countVal = -1;
+        if (!infinite.isSelected()) {
+            try {
+                count.commitEdit();
+            } catch (ParseException ex) {
+                // Reset spinner to last valid value
+                JComponent editor = count.getEditor();
+                if (editor instanceof JSpinner.DefaultEditor) {
+                    ((JSpinner.DefaultEditor) editor).getTextField().setValue(count.getValue());
+                }
+            }
+            countVal = (int) count.getValue();
+        }
+
         pingController.startPinging(host.getText(), countVal, this);
     }
 
