@@ -69,7 +69,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private double xScale, yScale;
     // TODO: separate labels further, add light colors to label backgrounds,
     //  add last ping to right side, end of ping spikes detection,
-    //  first ping on y axis and start and stop times on x axis, ipv4/6, light/dark theme icons,
+    //  start and stop times on x axis, ipv4/6,
     //  disable settings while pinging
 
     public PingPanel(PingController pingController) {
@@ -155,7 +155,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         clear = button("Clear");
 
         // Right-side buttons
-        share = button("Share");
+        share = scaledThemedIconButton("Share", "share", 1.0);
         JPopupMenu shareMenu = new JPopupMenu();
 
         copyStats = menuItem("Copy Statistics");
@@ -206,6 +206,13 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
     private JButton button(String text) {
         JButton b = new JButton(text);
+        b.addActionListener(this);
+        b.setFocusable(false);
+        return b;
+    }
+
+    private ScaledThemedIconButton scaledThemedIconButton(String text, String iconName, double heightFactor) {
+        ScaledThemedIconButton b = new ScaledThemedIconButton(text, iconName, heightFactor);
         b.addActionListener(this);
         b.setFocusable(false);
         return b;
@@ -464,8 +471,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
             ThemeColors.refresh();
             controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ThemeColors.separator()));
-            ImageIcon shareIcon = ResourceLoader.loadShareIcon(darkModeActive);
-            share.setIcon(scaleIconToTextHeight(shareIcon, share));
             theme.setText(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
 
             if (updateLaf) {
@@ -475,27 +480,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         } catch (Exception ex) {
             messageListener.onMessage("Failed to apply theme", MessageType.ERROR, ex);
         }
-    }
-
-    private static Icon scaleIconToTextHeight(ImageIcon icon, JButton button) {
-        // Estimate target height based on font metrics
-        FontMetrics fm = button.getFontMetrics(button.getFont());
-        int textHeight = fm.getAscent();
-
-        int iconWidth = icon.getIconWidth();
-        int iconHeight = icon.getIconHeight();
-
-        if (iconHeight == textHeight) {
-            return icon;
-        }
-
-        float scale = (float) textHeight / iconHeight;
-        int newW = Math.round(iconWidth * scale);
-        int newH = Math.round(iconHeight * scale);
-
-        Image image = icon.getImage();
-        Image scaled = image.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
-        return new ImageIcon(scaled);
     }
 
     @Override
