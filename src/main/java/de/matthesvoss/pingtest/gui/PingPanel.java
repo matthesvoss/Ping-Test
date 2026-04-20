@@ -117,7 +117,9 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         } else {
             frame.pack();
         }
+
         frame.setVisible(true);
+        startStop.requestFocusInWindow();
     }
 
     private JPanel createControlsPanel() {
