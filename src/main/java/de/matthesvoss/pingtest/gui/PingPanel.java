@@ -159,12 +159,12 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         JPanel rightGroup = makeFlowGroup(new FlowLayout(FlowLayout.RIGHT, 6, 4),
                 share, theme);
 
-        // Button bar (left/right in one row)
-        JPanel buttonBar = new JPanel(new BorderLayout());
-        buttonBar.add(leftGroup, BorderLayout.WEST);
-        buttonBar.add(rightGroup, BorderLayout.EAST);
+        // Controls panel (left/right in one row)
+        JPanel controlsPanel = new JPanel(new BorderLayout());
+        controlsPanel.add(leftGroup, BorderLayout.WEST);
+        controlsPanel.add(rightGroup, BorderLayout.EAST);
 
-        return buttonBar;
+        return controlsPanel;
     }
 
     private JPanel createStatsPanel() {
@@ -188,14 +188,14 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private JButton button(String text) {
         JButton b = new JButton(text);
         b.addActionListener(this);
-        b.setFocusable(false);
+        b.setFocusPainted(false);
         return b;
     }
 
     private ScaledThemedIconButton scaledThemedIconButton(String text, String iconName, double heightFactor) {
         ScaledThemedIconButton b = new ScaledThemedIconButton(text, iconName, heightFactor);
         b.addActionListener(this);
-        b.setFocusable(false);
+        b.setFocusPainted(false);
         return b;
     }
 
@@ -297,11 +297,11 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 startStop.setText("Start");
             }
         } else if (e.getSource().equals(clear)) {
-            boolean running = startStop.getText().equals("Stop");
+            boolean pinging = startStop.getText().equals("Stop");
             pingController.stopPinging();
             resetStats();
             resetLabels();
-            if (running) {
+            if (pinging) {
                 startPinging();
             }
         } else if (e.getSource().equals(copyStats)) {
@@ -827,34 +827,35 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     }
 
     private void drawTooltip(Graphics2D g2d) {
-        // Draw tooltip using hovered index
-        if (hoveredPing != null) {
-            long ts = hoveredPing.getTimestamp();
-            int val = hoveredPing.isTimeout() ? 0 : hoveredPing.getRtt();
-            int px = plotLeft + (int) Math.round((ts - startTs) * xScale);
-            int py = plotBottom - (int) Math.round(val * yScale);
-            px = Math.min(plotRight, px);
-            py = Math.max(plotTop, py);
-
-            g2d.setColor(ThemeColors.axis());
-            g2d.drawOval(px - 5, py - 5, 10, 10);
-            g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
-            String s = timestampFormat.format(new Date(ts)) + " " + (hoveredPing.isTimeout() ?
-                    "Request timed out" : val + "ms");
-            int tx = px + 6;
-            int ty = py - 6;
-
-            if (tx > getWidth() - fm.stringWidth(s)) {
-                tx = px - fm.stringWidth(s) - 6;
-            }
-            tx = Math.max(tx, plotLeft);
-
-            ty = Math.min(ty, plotBottom);
-            if (ty < fm.getAscent()) {
-                ty = py + fm.getAscent() + 6;
-            }
-
-            g2d.drawString(s, tx, ty);
+        if (hoveredPing == null) {
+            return;
         }
+        // Draw tooltip using hovered index
+        long ts = hoveredPing.getTimestamp();
+        int val = hoveredPing.isTimeout() ? 0 : hoveredPing.getRtt();
+        int px = plotLeft + (int) Math.round((ts - startTs) * xScale);
+        int py = plotBottom - (int) Math.round(val * yScale);
+        px = Math.min(plotRight, px);
+        py = Math.max(plotTop, py);
+
+        g2d.setColor(ThemeColors.axis());
+        g2d.drawOval(px - 5, py - 5, 10, 10);
+        g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
+        String s = timestampFormat.format(new Date(ts)) + " " + (hoveredPing.isTimeout() ?
+                "Request timed out" : val + "ms");
+        int tx = px + 6;
+        int ty = py - 6;
+
+        if (tx > getWidth() - fm.stringWidth(s)) {
+            tx = px - fm.stringWidth(s) - 6;
+        }
+        tx = Math.max(tx, plotLeft);
+
+        ty = Math.min(ty, plotBottom);
+        if (ty < fm.getAscent()) {
+            ty = py + fm.getAscent() + 6;
+        }
+
+        g2d.drawString(s, tx, ty);
     }
 }
