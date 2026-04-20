@@ -51,6 +51,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             worstLabel, lastLabel, elapsedLabel;
     private JTextField host;
     private JButton startStop, clear, share, theme;
+    private JPopupMenu shareMenu;
     private JMenuItem copyStats, copyPings, copyScreenshot, saveScreenshot;
     private JSpinner count;
     private JCheckBox infinite;
@@ -138,20 +139,17 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         clear = button("Clear");
 
         // Right-side buttons
+        rebuildShareMenu();
         share = scaledThemedIconButton("Share", "share", 1.0);
-        JPopupMenu shareMenu = new JPopupMenu();
-
-        copyStats = menuItem("Copy Statistics");
-        copyPings = menuItem("Copy All Pings");
-        copyScreenshot = menuItem("Copy Screenshot");
-        saveScreenshot = menuItem("Save Screenshot");
-
-        shareMenu.add(copyStats);
-        shareMenu.add(copyPings);
-        shareMenu.add(copyScreenshot);
-        shareMenu.add(saveScreenshot);
         // Show popup menu when Share button is clicked
-        share.addActionListener(e -> shareMenu.show(share, 0, share.getHeight()));
+        share.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    shareMenu.show(share, 0, share.getHeight());
+                }
+            }
+        });
 
         theme = button(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
 
@@ -441,10 +439,25 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
     }
 
+    private void rebuildShareMenu() {
+        shareMenu = new JPopupMenu();
+
+        copyStats = menuItem("Copy Statistics");
+        copyPings = menuItem("Copy All Pings");
+        copyScreenshot = menuItem("Copy Screenshot");
+        saveScreenshot = menuItem("Save Screenshot");
+
+        shareMenu.add(copyStats);
+        shareMenu.add(copyPings);
+        shareMenu.add(copyScreenshot);
+        shareMenu.add(saveScreenshot);
+    }
+
     private void switchTheme() {
         FlatAnimatedLafChange.showSnapshot();
 
         ThemeManager.switchTheme();
+        rebuildShareMenu();
         theme.setText(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
 
         FlatAnimatedLafChange.hideSnapshotWithAnimation();
