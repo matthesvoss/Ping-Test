@@ -51,7 +51,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private final Stroke dividerStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
             1f, new float[]{6f, 6f}, 0f);
     private final int padding = 8, r = 3;
-    private JPanel controlsBar;
     private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel,
             worstLabel, lastLabel, elapsedLabel;
     private JTextField host;
@@ -113,26 +112,14 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             }
         });
 
-        JPanel buttonBar = createTopBar();
-        JPanel statsPanel = createStatsPanel();
-
-        // Stack buttons row and labels row in the main control bar
-        controlsBar = new JPanel();
-        controlsBar.setLayout(new BoxLayout(controlsBar, BoxLayout.Y_AXIS));
-        controlsBar.add(buttonBar);
-        controlsBar.add(statsPanel);
-
-        // Keep the label group responsive to resizing
-        controlsBar.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                statsPanel.revalidate();
-                statsPanel.repaint();
-            }
-        });
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+        topPanel.add(createControlsPanel());
+        topPanel.add(createStatsPanel());
+        topPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
 
         JPanel root = new JPanel(new BorderLayout());
-        root.add(controlsBar, BorderLayout.NORTH);
+        root.add(topPanel, BorderLayout.NORTH);
         root.add(this, BorderLayout.CENTER);
         frame.setContentPane(root);
 
@@ -148,7 +135,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         frame.setVisible(true);
     }
 
-    private JPanel createTopBar() {
+    private JPanel createControlsPanel() {
         // Host and count controls
         JLabel hostLabel = new JLabel("Host:");
         host = new JTextField(prefs.getHost("google.com"), 20);
@@ -482,7 +469,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             }
 
             ThemeColors.refresh();
-            controlsBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ThemeColors.separator()));
             theme.setText(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
 
             if (updateLaf) {

@@ -2,6 +2,7 @@ package de.matthesvoss.pingtest.gui.theme;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.Optional;
 
 public class ThemeColors {
     private static Color accentColor;
@@ -9,26 +10,20 @@ public class ThemeColors {
     private static Color axisColor;
     private static Color stoppedBandColor;
     private static Color dividerColor;
-    private static Color separatorColor;
 
     private ThemeColors() {
     }
 
     public static void refresh() {
-        Color fgColor = UIManager.getColor("Label.foreground");
-        Color borderColor = UIManager.getColor("Component.borderColor");
-        accentColor = UIManager.getColor("Component.accentColor");
-        dangerColor = UIManager.getColor("Actions.Red");
-        if (dangerColor == null) {
-            dangerColor = Color.RED;
-        }
-
-        // Derived colors
-        axisColor = (fgColor != null ? fgColor : Color.BLACK);
-        stoppedBandColor = withAlpha(axisColor, 28);
-        Color baseDivider = (separatorColor != null ? separatorColor : (borderColor != null ? borderColor : axisColor));
-        dividerColor = withAlpha(baseDivider, 220);
-        separatorColor = borderColor != null ? borderColor : withAlpha(Color.BLACK, 40);
+        Color fgColor = Optional.ofNullable(UIManager.getColor("Label.foreground"))
+                .orElse(ThemeManager.isDarkTheme() ? Color.WHITE : Color.BLACK);
+        accentColor = Optional.ofNullable(UIManager.getColor("Component.accentColor"))
+                .orElse(Color.BLUE);
+        dangerColor = Optional.ofNullable(UIManager.getColor("Actions.Red"))
+                .orElse(Color.RED);
+        axisColor = fgColor;
+        stoppedBandColor = withAlpha(fgColor, 28);
+        dividerColor = withAlpha(fgColor, 170);
     }
 
     private static Color withAlpha(Color c, int alpha) {
@@ -53,9 +48,5 @@ public class ThemeColors {
 
     public static Color divider() {
         return dividerColor;
-    }
-
-    public static Color separator() {
-        return separatorColor;
     }
 }
