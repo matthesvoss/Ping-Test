@@ -1,10 +1,6 @@
 package de.matthesvoss.pingtest.gui;
 
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
-import de.matthesvoss.pingtest.Main;
 import de.matthesvoss.pingtest.controller.PingController;
 import de.matthesvoss.pingtest.gui.theme.ThemeColors;
 import de.matthesvoss.pingtest.gui.theme.ThemeManager;
@@ -45,7 +41,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private final DecimalFormat lossFormat = new DecimalFormat("0.00");
     private final DateFormat timestampFormat = new SimpleDateFormat("HH:mm:ss.SSS");
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
-    private final PreferencesManager prefs = new PreferencesManager(Main.class);
+    private final PreferencesManager prefs;
     private final Stroke normalStroke = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     private final Stroke thinStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
     private final Stroke dividerStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
@@ -72,8 +68,9 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     //  start and stop times on x axis, ipv4/6,
     //  disable settings while pinging
 
-    public PingPanel(PingController pingController) {
+    public PingPanel(PingController pingController, PreferencesManager prefs) {
         this.pingController = pingController;
+        this.prefs = prefs;
         lossFormat.setRoundingMode(RoundingMode.HALF_UP);
     }
 
@@ -86,16 +83,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     }
 
     public void createAndShow() {
-        // Initialize FlatLaf based on persisted preference before creating UI
-        FlatLaf.registerCustomDefaultsSource("de.matthesvoss.pingtest.themes");
-        boolean isDarkTheme = prefs.isDarkTheme(true);
-        ThemeManager.setDarkTheme(isDarkTheme);
-        if (isDarkTheme) {
-            FlatDarkLaf.setup();
-        } else {
-            FlatLightLaf.setup();
-        }
-
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.setIconImages(ResourceLoader.loadFrameIcons());
         frame.addWindowListener(new WindowAdapter() {
@@ -123,8 +110,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         root.add(this, BorderLayout.CENTER);
         frame.setContentPane(root);
 
-        reloadTheme(false);
-        SwingUtilities.updateComponentTreeUI(frame);
         if (prefs.hasWindowBounds()) {
             frame.setLocation(prefs.getWindowX(frame.getX()), prefs.getWindowY(frame.getY()));
             frame.setSize(prefs.getWindowW(frame.getWidth()), prefs.getWindowH(frame.getHeight()));
@@ -166,7 +151,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         // Show popup menu when Share button is clicked
         share.addActionListener(e -> shareMenu.show(share, 0, share.getHeight()));
 
-        theme = button("Dark mode");
+        theme = button(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
 
         JPanel leftGroup = makeFlowGroup(new FlowLayout(FlowLayout.LEFT, 6, 4),
                 hostLabel, host, countLabel, count, infinite, startStop, clear);
@@ -328,8 +313,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         } else if (e.getSource().equals(saveScreenshot)) {
             saveScreenshot();
         } else if (e.getSource().equals(theme)) {
-            ThemeManager.switchTheme();
-            reloadTheme(true);
+            switchTheme();
         }
     }
 
@@ -455,29 +439,13 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
     }
 
-    private void reloadTheme(boolean updateLaf) {
-        try {
-            if (updateLaf) {
-                // Start animation capture
-                FlatAnimatedLafChange.showSnapshot();
-                if (ThemeManager.isDarkTheme()) {
-                    FlatDarkLaf.setup();
-                } else {
-                    FlatLightLaf.setup();
-                }
-                FlatLaf.updateUI();
-            }
+    private void switchTheme() {
+        FlatAnimatedLafChange.showSnapshot();
 
-            ThemeColors.refresh();
-            theme.setText(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
+        ThemeManager.switchTheme();
+        theme.setText(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
 
-            if (updateLaf) {
-                // Finish animation transition
-                FlatAnimatedLafChange.hideSnapshotWithAnimation();
-            }
-        } catch (Exception ex) {
-            messageListener.onMessage("Failed to apply theme", MessageType.ERROR, ex);
-        }
+        FlatAnimatedLafChange.hideSnapshotWithAnimation();
     }
 
     @Override
