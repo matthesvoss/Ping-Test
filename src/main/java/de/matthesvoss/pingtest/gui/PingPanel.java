@@ -32,6 +32,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class PingPanel extends JPanel implements ActionListener, PingProcessListener {
+    private static final DecimalFormat LOSS_FORMAT = new DecimalFormat("0.00");
+    private static final Stroke NORMAL_STROKE = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+    private static final Stroke THIN_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
+    private static final Stroke DIVIDER_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
+            1f, new float[]{6f, 6f}, 0f);
     private static final int Y_AXIS_PAD = 8;
     private static final int PING_RADIUS = 3;
     private static final int PING_HOVER_RADIUS = 30;
@@ -43,15 +48,10 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private final PingController pingController;
     private final PingStatistics statistics = new PingStatistics(new MedianCalculator());
     private final JFrame frame = new JFrame("Ping Test");
-    private final DecimalFormat lossFormat = new DecimalFormat("0.00");
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
     private final PreferencesManager prefs;
-    private final Stroke normalStroke = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-    private final Stroke thinStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
-    private final Stroke dividerStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
-            1f, new float[]{6f, 6f}, 0f);
-    private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel,
-            worstLabel, lastLabel, elapsedLabel;
+    private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel, worstLabel,
+            lastLabel, elapsedLabel;
     private JTextField host;
     private JButton startStop, clear, share, theme;
     private JPopupMenu shareMenu;
@@ -75,7 +75,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     public PingPanel(PingController pingController, PreferencesManager prefs) {
         this.pingController = pingController;
         this.prefs = prefs;
-        lossFormat.setRoundingMode(RoundingMode.HALF_UP);
+        LOSS_FORMAT.setRoundingMode(RoundingMode.HALF_UP);
     }
 
     private static JPanel makeFlowGroup(LayoutManager layout, Component... components) {
@@ -159,11 +159,10 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
         theme = button(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode");
 
-        JPanel leftGroup = makeFlowGroup(new FlowLayout(FlowLayout.LEFT, 6, 4),
-                hostLabel, host, countLabel, count, infinite, startStop, clear);
+        JPanel leftGroup = makeFlowGroup(new FlowLayout(FlowLayout.LEFT, 6, 4), hostLabel, host, countLabel, count,
+                infinite, startStop, clear);
 
-        JPanel rightGroup = makeFlowGroup(new FlowLayout(FlowLayout.RIGHT, 6, 4),
-                share, theme);
+        JPanel rightGroup = makeFlowGroup(new FlowLayout(FlowLayout.RIGHT, 6, 4), share, theme);
 
         // Controls panel (left/right in one row)
         JPanel controlsPanel = new JPanel(new BorderLayout());
@@ -186,8 +185,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         lastLabel = new JLabel("Last: ms");
         elapsedLabel = new JLabel("Elapsed: 00:00:00");
 
-        return makeFlowGroup(new WrapLayout(FlowLayout.CENTER, 6, 0),
-                sentLabel, receivedLabel, lostLabel, lossLabel,
+        return makeFlowGroup(new WrapLayout(FlowLayout.CENTER, 6, 0), sentLabel, receivedLabel, lostLabel, lossLabel,
                 bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
     }
 
@@ -526,7 +524,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         receivedLabel.setText("Received: " + statistics.getReceived());
         lostLabel.setText("Lost: " + statistics.getLost());
         double loss = statistics.getLossPercent();
-        lossLabel.setText("Loss: " + lossFormat.format(loss) + "%");
+        lossLabel.setText("Loss: " + LOSS_FORMAT.format(loss) + "%");
         bestLabel.setText("Best: " + formatPing(statistics.getBest()));
         worstLabel.setText("Worst: " + formatPing(statistics.getWorst()));
         averageLabel.setText("Average: " + statistics.getAverage() + "ms");
@@ -637,7 +635,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
             // Dashed vertical divider lines at each press time
             g2d.setColor(ThemeColors.divider());
-            g2d.setStroke(dividerStroke);
+            g2d.setStroke(DIVIDER_STROKE);
 
             for (int i = 0; i < sessions.size(); i++) {
                 PingSession session = sessions.get(i);
@@ -654,7 +652,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private void drawAxes(Graphics2D g2d) {
         // Draw axes (left Y-axis, bottom X-axis)
         g2d.setColor(ThemeColors.axis());
-        g2d.setStroke(thinStroke);
+        g2d.setStroke(THIN_STROKE);
         g2d.drawLine(plotLeft, plotTop, plotLeft, plotBottom);
         g2d.drawLine(plotLeft, plotBottom, plotRight, plotBottom);
 
@@ -855,15 +853,16 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 y2 = Math.max(plotTop, Math.min(plotBottom, y2));
 
                 g2d.setColor(ThemeColors.accent());
-                if (runLen == 0 && segmentEnd) { // Draw centerline instead
+                if (runLen == 0 && segmentEnd) {
+                    // Draw centerline instead
                     if (minVal[i] == maxVal[i]) {
                         g2d.fillOval(x - PING_RADIUS, y1 - PING_RADIUS, PING_RADIUS * 2, PING_RADIUS * 2);
                     } else {
-                        g2d.setStroke(normalStroke);
+                        g2d.setStroke(NORMAL_STROKE);
                         g2d.drawLine(x, y1, x, y2);
                     }
                 } else {
-                    g2d.setStroke(thinStroke);
+                    g2d.setStroke(THIN_STROKE);
                     g2d.drawLine(x, y1, x, y2);
                 }
             }
@@ -879,7 +878,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 if (runLen == 0 && segmentEnd) {
                     g2d.fillOval(x - PING_RADIUS, plotBottom - PING_RADIUS, PING_RADIUS * 2, PING_RADIUS * 2);
                 } else if (runLen != 0) {
-                    g2d.setStroke(normalStroke);
+                    g2d.setStroke(NORMAL_STROKE);
                     Point2D last = centerLinePath.getCurrentPoint();
                     int lastYMid = (int) Math.round(last.getY());
                     int y = hasTimeout ? plotBottom : yMid;
@@ -899,7 +898,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
 
         g2d.setColor(ThemeColors.accent());
-        g2d.setStroke(normalStroke);
+        g2d.setStroke(NORMAL_STROKE);
         g2d.draw(centerLinePath);
     }
 
@@ -935,7 +934,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             if (timeout || (lastIsTimeout && !segmentStart)) {
                 // Draw timeout segment in danger color
                 if (ping.getSequence() != 0) {
-                    g2d.setStroke(normalStroke);
+                    g2d.setStroke(NORMAL_STROKE);
                     g2d.drawLine(lastX, lastY, x, y);
                     pingPath.moveTo(x, y);
                 }
@@ -953,7 +952,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
 
         g2d.setColor(ThemeColors.accent());
-        g2d.setStroke(normalStroke);
+        g2d.setStroke(NORMAL_STROKE);
         g2d.draw(pingPath);
     }
 
@@ -1008,8 +1007,8 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             if (clearBackground) {
                 Color prev = g2d.getColor();
                 g2d.setColor(getBackground());
-                g2d.fillRect(left - X_LABEL_PAD, y - fm.getAscent(),
-                        width + X_LABEL_PAD * 2, fm.getHeight() + X_LABEL_PAD);
+                g2d.fillRect(left - X_LABEL_PAD, y - fm.getAscent(), width + X_LABEL_PAD * 2,
+                        fm.getHeight() + X_LABEL_PAD);
                 g2d.setColor(prev);
             }
             g2d.drawLine(x, plotBottom, x, plotBottom + TICK_SIZE);

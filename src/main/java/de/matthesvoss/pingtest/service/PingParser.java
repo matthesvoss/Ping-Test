@@ -21,7 +21,8 @@ public class PingParser {
 
     // Linux
     private static final Pattern LINUX_SUCCESS =
-            Pattern.compile("icmp_seq=(\\d+).*?(?:time|Zeit)[=<]\\s*(\\d+(?:\\.\\d+)?)\\s*ms", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("icmp_seq=(\\d+).*?(?:time|Zeit)[=<]\\s*(\\d+(?:\\.\\d+)?)\\s*ms",
+                    Pattern.CASE_INSENSITIVE);
     private static final Pattern LINUX_TIMEOUT =
             Pattern.compile("(timeout|unreachable|time to live exceeded)", Pattern.CASE_INSENSITIVE);
     private static final Pattern LINUX_NO_ANSWER_YET =
