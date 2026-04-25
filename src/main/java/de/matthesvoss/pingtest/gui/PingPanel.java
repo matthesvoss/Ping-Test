@@ -24,7 +24,6 @@ import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.math.RoundingMode;
-import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -33,20 +32,24 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class PingPanel extends JPanel implements ActionListener, PingProcessListener {
-    private static final long serialVersionUID = 1L;
-    private static final int HOVER_RADIUS = 30;
+    private static final int Y_AXIS_PAD = 8;
+    private static final int PING_RADIUS = 3;
+    private static final int PING_HOVER_RADIUS = 30;
+    private static final int TICK_SIZE = 4;
+    private static final float X_LABEL_BLEND_ALPHA = 0.3f;
+    private static final int X_LABEL_HOVER_Y_PAD = 4;
+    private static final int X_LABEL_HOVER_X = 24;
+    private static final int X_LABEL_PAD = 2;
     private final PingController pingController;
     private final PingStatistics statistics = new PingStatistics(new MedianCalculator());
     private final JFrame frame = new JFrame("Ping Test");
     private final DecimalFormat lossFormat = new DecimalFormat("0.00");
-    private final DateFormat timestampFormat = new SimpleDateFormat("HH:mm:ss.SSS");
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
     private final PreferencesManager prefs;
     private final Stroke normalStroke = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     private final Stroke thinStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
     private final Stroke dividerStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
             1f, new float[]{6f, 6f}, 0f);
-    private final int padding = 8, r = 3;
     private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel,
             worstLabel, lastLabel, elapsedLabel;
     private JTextField host;
@@ -59,15 +62,15 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private PingResult hoveredPing;
     private String lastHost = "";
     private int plotLeft, plotRight, plotTop, plotBottom, plotW, plotH;
-    private long startTs, plotTimeSpan, elapsedTime;
+    private long startTs, lastPingTs, plotTimeSpan, elapsedTime;
     private FontMetrics fm;
     private String yTop;
     private int yLabelWidth;
     private double xScale, yScale;
+    private List<Long> xLabelTimestamps = new ArrayList<>();
+    private int hoveredXLabel = -1;
     // TODO: separate labels further, add light colors to label backgrounds,
-    //  add last ping to right side, end of ping spikes detection,
-    //  start and stop times on x axis, ipv4/6,
-    //  disable settings while pinging
+    //  add last ping to right side, end of ping spikes detection, ipv4/6
 
     public PingPanel(PingController pingController, PreferencesManager prefs) {
         this.pingController = pingController;
@@ -96,7 +99,10 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                updateHoveredPing(e.getX(), e.getY());
+                int x = e.getX(), y = e.getY();
+                if (updateHoveredPing(x, y) || updateHoveredXLabel(x, y)) {
+                    repaint();
+                }
             }
         });
 
@@ -221,58 +227,57 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 frame.getExtendedState());
     }
 
-    private void updateHoveredPing(int cursorPanelX, int cursorPanelY) {
+    private long getMouseTs(int mouseX) {
+        long mouseXms = Math.max(0L, Math.min(plotTimeSpan, Math.round((mouseX - plotLeft) / xScale)));
+        return startTs + mouseXms;
+    }
+
+    private boolean updateHoveredPing(int mouseX, int mouseY) {
         List<PingResult> pings = statistics.getAllPings();
         if (pings.isEmpty() || plotTimeSpan <= 0 || plotW <= 0 || plotH <= 0) {
             if (hoveredPing != null) {
                 hoveredPing = null;
-                repaint();
+                return true;
             }
-            return;
+            return false;
         }
 
-        double xScale = (double) plotW / plotTimeSpan;
-
-        // Map cursor x to timestamp
-        long cursorXms = Math.max(0L, Math.min(plotTimeSpan, Math.round((cursorPanelX - plotLeft) / xScale)));
-        long cursorTs = startTs + cursorXms;
-
         // Convert hover pixel radius to time window
-        long dt = (long) Math.ceil(HOVER_RADIUS / xScale);
-        long tMin = cursorTs - dt;
-        long tMax = cursorTs + dt;
+        long mouseTs = getMouseTs(mouseX);
+        long dt = (long) Math.ceil(PING_HOVER_RADIUS / xScale);
+        long tMin = mouseTs - dt;
+        long tMax = mouseTs + dt;
 
         // Binary search for time window bounds
         List<Long> pingTimestamps = pings.stream().map(PingResult::getTimestamp).collect(Collectors.toList());
-        int n = pingTimestamps.size();
         int lo = Collections.binarySearch(pingTimestamps, tMin);
-        lo = (lo >= 0) ? lo : Math.max(0, Math.min(n, -lo - 2));
+        lo = lo >= 0 ? lo : Math.max(0, -lo - 2);
         int hi = Collections.binarySearch(pingTimestamps, tMax);
-        hi = (hi >= 0) ? hi : Math.min(n, -hi - 1);
+        hi = hi >= 0 ? hi : -hi - 1;
 
         PingResult closestPing = null;
-        int smallestD2 = HOVER_RADIUS * HOVER_RADIUS;
+        int smallestD2 = PING_HOVER_RADIUS * PING_HOVER_RADIUS;
 
         PingResult worstPing = statistics.getWorst();
         int worst = worstPing == null || worstPing.isTimeout() ? -1 : worstPing.getRtt();
         double yScale = worst > 0 ? (double) plotH / worst : 0.0;
-        double cursorY = plotBottom - cursorPanelY;
+        double y = plotBottom - mouseY;
 
         for (int i = lo; i < hi; i++) {
             PingResult ping = pings.get(i);
             int val = ping.isTimeout() ? 0 : ping.getRtt();
             double valPixels = val * yScale;
 
-            // Quick reject on Y (value-space) before computing pixel distance
-            if (worst > 0 && Math.abs(valPixels - cursorY) > HOVER_RADIUS) {
+            // Quick reject on Y before computing pixel distance
+            if (worst > 0 && Math.abs(valPixels - y) > PING_HOVER_RADIUS) {
                 continue;
             }
 
             long ts = pingTimestamps.get(i);
             int px = plotLeft + (int) Math.round((ts - startTs) * xScale);
             int py = plotBottom - (int) Math.round(val * yScale);
-            int dx = px - cursorPanelX;
-            int dy = py - cursorPanelY;
+            int dx = px - mouseX;
+            int dy = py - mouseY;
             int d2 = dx * dx + dy * dy;
             if (d2 < smallestD2) {
                 smallestD2 = d2;
@@ -282,8 +287,50 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
         if (hoveredPing != closestPing) {
             hoveredPing = closestPing;
-            repaint();
+            return true;
         }
+        return false;
+    }
+
+    private boolean updateHoveredXLabel(int mouseX, int mouseY) {
+        int xLabelTop = plotBottom + TICK_SIZE;
+        int xLabelBottom = xLabelTop + fm.getHeight();
+
+        if (statistics.isReset() || mouseY < xLabelTop - X_LABEL_HOVER_Y_PAD
+                || mouseY > xLabelBottom + X_LABEL_HOVER_Y_PAD) {
+            if (hoveredXLabel != -1) {
+                hoveredXLabel = -1;
+                return true;
+            }
+            return false;
+        }
+
+        rebuildXLabelTimestamps();
+
+        int hi = Collections.binarySearch(xLabelTimestamps, getMouseTs(mouseX));
+        hi = hi >= 0 ? hi : -hi - 1;
+        int lo = Math.max(0, hi - 1);
+
+        int closestLabel = -1;
+        int closestDist = Integer.MAX_VALUE;
+
+        for (int i = lo; i <= hi; i++) {
+            long ts = xLabelTimestamps.get(i);
+
+            int x = plotLeft + (int) Math.round((ts - startTs) * xScale);
+            int dist = Math.abs(mouseX - x);
+
+            if (dist < closestDist && dist <= X_LABEL_HOVER_X) {
+                closestDist = dist;
+                closestLabel = i;
+            }
+        }
+
+        if (hoveredXLabel != closestLabel) {
+            hoveredXLabel = closestLabel;
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -404,7 +451,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                     worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText()));
             for (PingResult ping : statistics.getAllPings()) {
                 String value = ping.isTimeout() ? "Request timed out" : ping.getRtt() + "ms";
-                lines.add(timestampFormat.format(new Date(ping.getTimestamp())) + "\t" + value);
+                lines.add(Utils.formatTimestampMs(ping.getTimestamp()) + "\t" + value);
             }
             Utils.copyToClipboard(String.join("\n", lines));
         } catch (Exception ex) {
@@ -516,23 +563,24 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        PingResult worstPing = statistics.getWorst();
-        int worst = worstPing == null || worstPing.isTimeout() ? -1 : worstPing.getRtt();
-
         Graphics2D g2d = (Graphics2D) g.create();
         try {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            computePlotBounds(g2d, worst);
-
-            drawAxes(g2d);
+            computeVariables(g2d);
             if (plotW == 0 || plotH == 0) {
+                drawAxes(g2d);
+                drawAxesLabels(g2d);
                 return;
             }
-            drawBands(g2d, worst);
-            if (!statistics.hasStatistics()) {
+
+            drawBandsAndDividers(g2d);
+            drawAxes(g2d);
+            drawAxesLabels(g2d);
+            if (statistics.isReset()) {
                 return;
             }
+
             drawPingData(g2d);
             drawTooltip(g2d);
         } finally {
@@ -540,13 +588,16 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
     }
 
-    private void computePlotBounds(Graphics2D g2d, int worst) {
+    private void computeVariables(Graphics2D g2d) {
+        PingResult worstPing = statistics.getWorst();
+        int worst = worstPing == null || worstPing.isTimeout() ? -1 : worstPing.getRtt();
+
         fm = g2d.getFontMetrics();
         yTop = (worst <= 0 ? "0" : worst) + "ms";
         yLabelWidth = fm.stringWidth(yTop);
         int xLabelHeight = fm.getHeight();
-        int leftMargin = Math.max(40, yLabelWidth + padding * 2);
-        int bottomMargin = Math.max(28, xLabelHeight + padding * 2);
+        int leftMargin = Math.max(40, yLabelWidth + Y_AXIS_PAD * 2);
+        int bottomMargin = Math.max(28, xLabelHeight + Y_AXIS_PAD * 2);
         int rightMargin = 12;
         int topMargin = 12;
 
@@ -556,49 +607,16 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         plotH = Math.max(0, getHeight() - topMargin - bottomMargin);
         plotBottom = plotTop + plotH;
         plotRight = plotLeft + plotW;
-    }
 
-    private void drawAxes(Graphics2D g2d) {
-        // Draw axes (left Y-axis, bottom X-axis)
-        g2d.setColor(ThemeColors.axis());
-        g2d.setStroke(thinStroke);
-        g2d.drawLine(plotLeft, plotTop, plotLeft, plotBottom);
-        g2d.drawLine(plotLeft, plotBottom, plotRight, plotBottom);
-
-        // Top y-axis label
-        int topLabelX = plotLeft - padding - yLabelWidth;
-        int topLabelY = plotTop + fm.getAscent();
-        g2d.drawString(yTop, Math.max(2, topLabelX), Math.max(fm.getAscent(), topLabelY));
-        // Bottom y-axis label
-        String yBottom = "0ms";
-        int bottomLabelX = plotLeft - padding - fm.stringWidth(yBottom);
-        int bottomLabelY = plotBottom - 2;
-        g2d.drawString(yBottom, Math.max(2, bottomLabelX), bottomLabelY);
-
-        // X-axis labels
         startTs = statistics.getStartOfFirstSession();
-        long lastTs = statistics.getTimestampOfLastPing();
-        plotTimeSpan = Math.max(lastTs - startTs, 0L);
+        lastPingTs = statistics.getTimestampOfLastPing();
+        plotTimeSpan = Math.max(lastPingTs - startTs, 0L);
 
-        String xLeft = "0s";
-        String xRight = Utils.formatTime(plotTimeSpan);
-        int xLeftY = plotBottom + fm.getAscent() + 4;
-        g2d.drawString(xLeft, plotLeft, xLeftY);
-        int xRightX = plotRight - fm.stringWidth(xRight);
-        g2d.drawString(xRight, Math.max(plotLeft, xRightX), xLeftY);
-
-        // Minor ticks and bands/dividers
-        int tickSize = 4;
-        g2d.drawLine(plotLeft, plotTop, plotLeft - tickSize, plotTop);
-        g2d.drawLine(plotLeft, plotBottom, plotLeft - tickSize, plotBottom);
-        g2d.drawLine(plotLeft, plotBottom, plotLeft, plotBottom + tickSize);
-        g2d.drawLine(plotRight, plotBottom, plotRight, plotBottom + tickSize);
-    }
-
-    private void drawBands(Graphics2D g2d, int worst) {
         xScale = plotTimeSpan > 0 ? (double) plotW / plotTimeSpan : 0.0;
         yScale = worst > 0 ? (double) plotH / worst : 0.0;
+    }
 
+    private void drawBandsAndDividers(Graphics2D g2d) {
         // Draw section shading and vertical dividers
         List<PingSession> sessions = statistics.getSessions();
         if (sessions.size() > 1) {
@@ -630,13 +648,126 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                     drawDivider(g2d, session.getStopTimestamp());
                 }
             }
-
-            // Redraw axes to keep them crisp
-            g2d.setColor(ThemeColors.axis());
-            g2d.setStroke(thinStroke);
-            g2d.drawLine(plotLeft, plotTop, plotLeft, plotBottom);
-            g2d.drawLine(plotLeft, plotBottom, plotRight, plotBottom);
         }
+    }
+
+    private void drawAxes(Graphics2D g2d) {
+        // Draw axes (left Y-axis, bottom X-axis)
+        g2d.setColor(ThemeColors.axis());
+        g2d.setStroke(thinStroke);
+        g2d.drawLine(plotLeft, plotTop, plotLeft, plotBottom);
+        g2d.drawLine(plotLeft, plotBottom, plotRight, plotBottom);
+
+        // Draw ticks
+        g2d.drawLine(plotLeft, plotTop, plotLeft - TICK_SIZE, plotTop);
+        g2d.drawLine(plotLeft, plotBottom, plotLeft - TICK_SIZE, plotBottom);
+        g2d.drawLine(plotLeft, plotBottom, plotLeft, plotBottom + TICK_SIZE);
+        g2d.drawLine(plotRight, plotBottom, plotRight, plotBottom + TICK_SIZE);
+    }
+
+    private void drawAxesLabels(Graphics2D g2d) {
+        // Top y-axis label
+        int topLabelX = plotLeft - Y_AXIS_PAD - yLabelWidth;
+        int topLabelY = plotTop + fm.getAscent();
+        g2d.drawString(yTop, Math.max(2, topLabelX), Math.max(fm.getAscent(), topLabelY));
+        // Bottom y-axis label
+        String yBottom = "0ms";
+        int bottomLabelX = plotLeft - Y_AXIS_PAD - fm.stringWidth(yBottom);
+        int bottomLabelY = plotBottom - 2;
+        g2d.drawString(yBottom, Math.max(2, bottomLabelX), bottomLabelY);
+
+        // X-axis labels
+        int xLabelY = plotBottom + fm.getAscent() + TICK_SIZE;
+        if (statistics.isReset()) {
+            String text = "00:00:00";
+
+            CenteredLabel leftLabel = new CenteredLabel(text, plotLeft, xLabelY);
+            CenteredLabel rightLabel = new CenteredLabel(text, Math.max(plotLeft, plotRight), xLabelY);
+
+            leftLabel.draw(g2d, false);
+            rightLabel.draw(g2d, false);
+            return;
+        }
+
+        // Build labels
+        rebuildXLabelTimestamps();
+        CenteredLabel[] xLabels = new CenteredLabel[xLabelTimestamps.size()];
+        for (int i = 0; i < xLabelTimestamps.size(); i++) {
+            long ts = xLabelTimestamps.get(i);
+            int xLabelX = plotLeft + (int) Math.round((ts - startTs) * xScale);
+            xLabels[i] = new CenteredLabel(Utils.formatTimestampSec(ts), xLabelX, xLabelY);
+        }
+
+        // Detect overlaps
+        for (int i = 0; i < xLabels.length; i++) {
+            for (int j = i + 1; j < xLabels.length; j++) {
+                CenteredLabel l1 = xLabels[i], l2 = xLabels[j];
+                if (l1.right >= l2.left) {
+                    l2.background = true;
+                    if (i == hoveredXLabel || j == hoveredXLabel) {
+                        l1.overlapsHovered = l2.overlapsHovered = true;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+
+        boolean firstOverlapsHovered = xLabels[0].overlapsHovered;
+        boolean lastOverlapsHovered = xLabels[xLabels.length - 1].overlapsHovered;
+
+        if (!lastOverlapsHovered) {
+            // Move overlaps of last label to background to always make it visible
+            CenteredLabel last = xLabels[xLabels.length - 1];
+            for (int i = xLabels.length - 2; i >= 0; i--) {
+                CenteredLabel l1 = xLabels[i];
+                if (l1.right >= last.left) {
+                    l1.background = true;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // Sort labels into background and foreground
+        List<CenteredLabel> blendedLabels = new ArrayList<>(), opaqueLabels = new ArrayList<>();
+        for (int i = 0; i < xLabels.length; i++) {
+            if (i == hoveredXLabel || i == 0 && !firstOverlapsHovered || i == xLabels.length - 1 && !lastOverlapsHovered) {
+                opaqueLabels.add(xLabels[i]);
+                continue;
+            }
+
+            CenteredLabel l = xLabels[i];
+            if (l.background || l.overlapsHovered) {
+                blendedLabels.add(l);
+                continue;
+            }
+            opaqueLabels.add(l);
+        }
+
+        Composite old = g2d.getComposite();
+        Composite blend = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, X_LABEL_BLEND_ALPHA);
+
+        // Draw background labels
+        g2d.setComposite(blend);
+        for (CenteredLabel l : blendedLabels) {
+            l.draw(g2d, false);
+        }
+
+        // Draw foreground labels
+        g2d.setComposite(old);
+        for (CenteredLabel l : opaqueLabels) {
+            l.draw(g2d, true);
+        }
+    }
+
+    private void rebuildXLabelTimestamps() {
+        xLabelTimestamps = statistics.getSessionTimestamps();
+        // Remove last stop timestamp and replace it with the timestamp of the last ping
+        if (!xLabelTimestamps.isEmpty() && xLabelTimestamps.size() % 2 == 0) {
+            xLabelTimestamps.remove(xLabelTimestamps.size() - 1);
+        }
+        xLabelTimestamps.add(lastPingTs);
     }
 
     private void drawDivider(Graphics2D g2d, long ts) {
@@ -726,7 +857,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 g2d.setColor(ThemeColors.accent());
                 if (runLen == 0 && segmentEnd) { // Draw centerline instead
                     if (minVal[i] == maxVal[i]) {
-                        g2d.fillOval(x - r, y1 - r, r * 2, r * 2);
+                        g2d.fillOval(x - PING_RADIUS, y1 - PING_RADIUS, PING_RADIUS * 2, PING_RADIUS * 2);
                     } else {
                         g2d.setStroke(normalStroke);
                         g2d.drawLine(x, y1, x, y2);
@@ -746,7 +877,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 // Draw centerline in danger color
                 g2d.setColor(ThemeColors.danger());
                 if (runLen == 0 && segmentEnd) {
-                    g2d.fillOval(x - r, plotBottom - r, r * 2, r * 2);
+                    g2d.fillOval(x - PING_RADIUS, plotBottom - PING_RADIUS, PING_RADIUS * 2, PING_RADIUS * 2);
                 } else if (runLen != 0) {
                     g2d.setStroke(normalStroke);
                     Point2D last = centerLinePath.getCurrentPoint();
@@ -799,7 +930,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
             // If the run has only a single point, draw it as a dot
             if (ping.getSession().isSingleton()) {
-                g2d.fillOval(x - r, y - r, r * 2, r * 2);
+                g2d.fillOval(x - PING_RADIUS, y - PING_RADIUS, PING_RADIUS * 2, PING_RADIUS * 2);
             }
             if (timeout || (lastIsTimeout && !segmentStart)) {
                 // Draw timeout segment in danger color
@@ -841,8 +972,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         g2d.setColor(ThemeColors.axis());
         g2d.drawOval(px - 5, py - 5, 10, 10);
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
-        String s = timestampFormat.format(new Date(ts)) + " " + (hoveredPing.isTimeout() ?
-                "Request timed out" : val + "ms");
+        String s = Utils.formatTimestampMs(ts) + " " + (hoveredPing.isTimeout() ? "Request timed out" : val + "ms");
         int tx = px + 6;
         int ty = py - 6;
 
@@ -857,5 +987,33 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         }
 
         g2d.drawString(s, tx, ty);
+    }
+
+    private class CenteredLabel {
+        int x, y, left, right, width;
+        String text;
+        boolean background, overlapsHovered;
+
+        CenteredLabel(String text, int x, int y) {
+            this.text = text;
+            this.x = x;
+            this.y = y;
+            width = fm.stringWidth(text);
+            int hw = width / 2;
+            left = x - hw;
+            right = x + hw;
+        }
+
+        void draw(Graphics2D g2d, boolean clearBackground) {
+            if (clearBackground) {
+                Color prev = g2d.getColor();
+                g2d.setColor(getBackground());
+                g2d.fillRect(left - X_LABEL_PAD, y - fm.getAscent(),
+                        width + X_LABEL_PAD * 2, fm.getHeight() + X_LABEL_PAD);
+                g2d.setColor(prev);
+            }
+            g2d.drawLine(x, plotBottom, x, plotBottom + TICK_SIZE);
+            g2d.drawString(text, left, y);
+        }
     }
 }

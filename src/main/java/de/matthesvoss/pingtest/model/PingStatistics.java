@@ -38,8 +38,8 @@ public class PingStatistics {
         return sessions;
     }
 
-    public boolean hasStatistics() {
-        return sent != 0;
+    public boolean isReset() {
+        return sent == 0;
     }
 
     public PingSession getCurrentSession() {
@@ -125,6 +125,17 @@ public class PingStatistics {
 
     public int getMedian() {
         return medianCalc.getMedian();
+    }
+
+    public List<Long> getSessionTimestamps() {
+        ArrayList<Long> timestamps = new ArrayList<>();
+        for (PingSession session : sessions) {
+            timestamps.add(session.getStartTimestamp());
+            if (session.hasStopped()) {
+                timestamps.add(session.getStopTimestamp());
+            }
+        }
+        return timestamps;
     }
 
     public long getStartOfFirstSession() {
