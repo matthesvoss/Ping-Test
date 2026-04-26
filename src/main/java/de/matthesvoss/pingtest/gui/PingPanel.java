@@ -536,7 +536,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     @Override
     public void onProcessException(PingProcessException ex) {
         if (ex instanceof UnknownHostException) {
-            messageListener.onMessage("Unknown host: " + host.getText(), MessageType.ERROR);
+            messageListener.onMessage("Unknown host: " + host.getText(), MessageType.ERROR, null);
             host.selectAll();
             host.requestFocus();
         } else {

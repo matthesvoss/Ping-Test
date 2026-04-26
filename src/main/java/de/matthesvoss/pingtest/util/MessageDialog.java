@@ -29,12 +29,12 @@ public class MessageDialog {
         );
     }
 
-    public static void showError(Component parent, String message, Throwable throwable) {
+    public static void showError(Component parent, String message, Throwable cause) {
         if (message == null || message.isEmpty()) {
             message = "An error occurred";
         }
-        if (throwable != null) {
-            String exMessage = throwable.getMessage();
+        if (cause != null) {
+            String exMessage = cause.getMessage();
             if (exMessage != null && !exMessage.equalsIgnoreCase(message)) {
                 message += "\n" + exMessage;
             }
@@ -50,7 +50,7 @@ public class MessageDialog {
         );
     }
 
-    public static void show(Component parent, String message, MessageType type, Throwable throwable) {
+    public static void show(Component parent, String message, MessageType type, Throwable cause) {
         switch (type) {
             case INFO:
                 showInfo(parent, message);
@@ -59,7 +59,7 @@ public class MessageDialog {
                 showWarning(parent, message);
                 break;
             case ERROR:
-                showError(parent, message, throwable);
+                showError(parent, message, cause);
                 break;
         }
     }
