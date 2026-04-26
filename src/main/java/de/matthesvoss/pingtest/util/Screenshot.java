@@ -6,19 +6,14 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
-public final class ScreenshotUtils {
-    private ScreenshotUtils() {
+public class Screenshot {
+    private Screenshot() {
     }
 
     public static BufferedImage takeScreenshot(Component component) {
         BufferedImage img = new BufferedImage(component.getWidth(), component.getHeight(), BufferedImage.TYPE_INT_ARGB);
         component.paint(img.createGraphics());
         return img;
-    }
-
-    public static void copyToClipboard(Component component) {
-        BufferedImage img = takeScreenshot(component);
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new TransferableImage(img), null);
     }
 
     public static void saveScreenshot(BufferedImage screenshot, File file) throws IOException {

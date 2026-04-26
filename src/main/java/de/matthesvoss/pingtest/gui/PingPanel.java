@@ -13,6 +13,7 @@ import de.matthesvoss.pingtest.service.PingProcessListener;
 import de.matthesvoss.pingtest.service.exceptions.PingProcessException;
 import de.matthesvoss.pingtest.service.exceptions.UnknownHostException;
 import de.matthesvoss.pingtest.util.*;
+import de.matthesvoss.pingtest.util.Formatter;
 
 import javax.swing.*;
 import javax.swing.Timer;
@@ -405,7 +406,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                     elapsedNew += System.currentTimeMillis() - session.getStartTimestamp();
                 }
             }
-            elapsedLabel.setText("Elapsed: " + Utils.formatTime(elapsedNew));
+            elapsedLabel.setText("Elapsed: " + Formatter.formatTimeInterval(elapsedNew));
             elapsedTime = elapsedNew;
         }
     }
@@ -435,7 +436,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             String stats = String.join("\t", sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(),
                     lossLabel.getText(), bestLabel.getText(), averageLabel.getText(), medianLabel.getText(),
                     worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText());
-            Utils.copyToClipboard(stats);
+            Clipboard.copyToClipboard(stats);
         } catch (Exception ex) {
             messageListener.onMessage("Failed to copy statistics to clipboard", MessageType.ERROR, ex);
         }
@@ -449,20 +450,20 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                     worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText()));
             for (PingResult ping : statistics.getAllPings()) {
                 String value = ping.isTimeout() ? "Request timed out" : ping.getRtt() + "ms";
-                lines.add(Utils.formatTimestampMs(ping.getTimestamp()) + "\t" + value);
+                lines.add(Formatter.formatTimestampMs(ping.getTimestamp()) + "\t" + value);
             }
-            Utils.copyToClipboard(String.join("\n", lines));
+            Clipboard.copyToClipboard(String.join("\n", lines));
         } catch (Exception ex) {
             messageListener.onMessage("Failed to copy pings to clipboard", MessageType.ERROR, ex);
         }
     }
 
     private void copyScreenshotToClipboard() {
-        ScreenshotUtils.copyToClipboard(frame);
+        Clipboard.copyToClipboard(frame);
     }
 
     private void saveScreenshot() {
-        BufferedImage img = ScreenshotUtils.takeScreenshot(frame);
+        BufferedImage img = Screenshot.takeScreenshot(frame);
 
         // Choose file destination
         JFileChooser chooser = new JFileChooser();
@@ -477,7 +478,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         if (chooser.showSaveDialog(frame) == JFileChooser.APPROVE_OPTION) {
             try {
                 File file = chooser.getSelectedFile();
-                ScreenshotUtils.saveScreenshot(img, file);
+                Screenshot.saveScreenshot(img, file);
             } catch (Exception ex) {
                 messageListener.onMessage("Failed to save screenshot", MessageType.ERROR, ex);
             }
@@ -693,7 +694,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         for (int i = 0; i < xLabelTimestamps.size(); i++) {
             long ts = xLabelTimestamps.get(i);
             int xLabelX = plotLeft + (int) Math.round((ts - startTs) * xScale);
-            xLabels[i] = new CenteredLabel(Utils.formatTimestampSec(ts), xLabelX, xLabelY);
+            xLabels[i] = new CenteredLabel(Formatter.formatTimestampSec(ts), xLabelX, xLabelY);
         }
 
         // Detect overlaps
@@ -971,7 +972,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         g2d.setColor(ThemeColors.axis());
         g2d.drawOval(px - 5, py - 5, 10, 10);
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
-        String s = Utils.formatTimestampMs(ts) + " " + (hoveredPing.isTimeout() ? "Request timed out" : val + "ms");
+        String s = Formatter.formatTimestampMs(ts) + " " + (hoveredPing.isTimeout() ? "Request timed out" : val + "ms");
         int tx = px + 6;
         int ty = py - 6;
 

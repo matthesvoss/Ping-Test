@@ -10,6 +10,8 @@ import de.matthesvoss.pingtest.util.MessageListener;
 import javax.swing.*;
 
 public class Application {
+    public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
+
     public static void start() {
         SwingUtilities.invokeLater(Application::initUI);
     }

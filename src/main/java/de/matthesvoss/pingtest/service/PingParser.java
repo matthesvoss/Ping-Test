@@ -1,9 +1,9 @@
 package de.matthesvoss.pingtest.service;
 
+import de.matthesvoss.pingtest.Application;
 import de.matthesvoss.pingtest.model.PingResult;
 import de.matthesvoss.pingtest.service.exceptions.PingProcessException;
 import de.matthesvoss.pingtest.service.exceptions.UnknownHostException;
-import de.matthesvoss.pingtest.util.Utils;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -50,7 +50,7 @@ public class PingParser {
         }
 
         // Handle "no answer yet for icmp_seq" (Linux only)
-        if (!Utils.IS_WINDOWS) {
+        if (!Application.IS_WINDOWS) {
             Matcher noAns = LINUX_NO_ANSWER_YET.matcher(line);
             if (noAns.find()) {
                 int seq = parseIntSafe(noAns.group(1));
@@ -65,7 +65,7 @@ public class PingParser {
         }
 
         // Success lines
-        if (Utils.IS_WINDOWS) {
+        if (Application.IS_WINDOWS) {
             Matcher m = WIN_SUCCESS_EN.matcher(line);
             if (m.find()) {
                 return new PingResult(timestamp, parseIntSafe(m.group(1)));

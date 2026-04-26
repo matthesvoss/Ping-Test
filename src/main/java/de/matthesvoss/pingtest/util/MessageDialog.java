@@ -3,7 +3,7 @@ package de.matthesvoss.pingtest.util;
 import javax.swing.*;
 import java.awt.*;
 
-public final class MessageDialog {
+public class MessageDialog {
     private MessageDialog() {
     }
 

@@ -1,9 +1,9 @@
 package de.matthesvoss.pingtest.service;
 
+import de.matthesvoss.pingtest.Application;
 import de.matthesvoss.pingtest.model.PingResult;
 import de.matthesvoss.pingtest.service.exceptions.PingProcessException;
 import de.matthesvoss.pingtest.service.exceptions.UnknownHostException;
-import de.matthesvoss.pingtest.util.Utils;
 
 import javax.swing.*;
 import java.nio.charset.Charset;
@@ -44,7 +44,7 @@ public class PingProcess {
     }
 
     private ProcessBuilder getProcessBuilder(int count) {
-        if (Utils.IS_WINDOWS) {
+        if (Application.IS_WINDOWS) {
             // Windows: -t for infinite, -n for count
             if (count == -1) {
                 return new ProcessBuilder("ping", "-w", "1000", "-t", host);
