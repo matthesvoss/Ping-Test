@@ -142,4 +142,13 @@ public class PingStatistics {
     public long getTimestampOfLastPing() {
         return lastPing == null ? 0 : lastPing.getTimestamp();
     }
+
+    public long getElapsedTime() {
+        long elapsed = 0L;
+        for (PingSession session : sessions) {
+            long end = session.hasStopped() ? session.getStopTimestamp() : System.currentTimeMillis();
+            elapsed += end - session.getStartTimestamp();
+        }
+        return elapsed;
+    }
 }
