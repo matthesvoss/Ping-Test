@@ -844,6 +844,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             }
             if (segmentStart) {
                 runLen = 0;
+                lastHasTimeout = false;
             }
             int x = plotLeft + i;
             if (hasData) {
@@ -873,7 +874,7 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 double mid = (minVal[i] + maxVal[i]) / 2.0;
                 yMid = plotBottom - (int) Math.round(mid * yScale);
             }
-            if (hasTimeout || (lastHasTimeout && !segmentStart)) {
+            if (hasTimeout || lastHasTimeout) {
                 // Draw centerline in danger color
                 g2d.setColor(ThemeColors.danger());
                 if (runLen == 0 && segmentEnd) {
