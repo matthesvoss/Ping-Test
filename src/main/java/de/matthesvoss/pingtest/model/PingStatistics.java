@@ -38,18 +38,12 @@ public class PingStatistics {
         return sessions;
     }
 
-    public boolean isReset() {
-        return sent == 0;
-    }
-
     public PingSession getCurrentSession() {
         return !sessions.isEmpty() ? sessions.get(sessions.size() - 1) : null;
     }
 
-    public List<PingResult> getAllPings() {
-        return sessions.stream()
-                .flatMap(s -> s.getPings().stream())
-                .collect(Collectors.toList());
+    public boolean isReset() {
+        return sent == 0;
     }
 
     public void reset() {
@@ -62,10 +56,13 @@ public class PingStatistics {
         medianCalc.clear();
     }
 
+    public List<PingResult> getAllPings() {
+        return sessions.stream()
+                .flatMap(s -> s.getPings().stream())
+                .collect(Collectors.toList());
+    }
+
     public void addPing(PingResult ping) {
-        if (sessions.isEmpty()) {
-            startNewSession();
-        }
         getCurrentSession().addPing(ping);
         sent++;
         if (ping.isTimeout()) {
