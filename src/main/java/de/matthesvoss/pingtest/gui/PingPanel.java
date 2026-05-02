@@ -15,7 +15,10 @@ import de.matthesvoss.pingtest.util.*;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.math.RoundingMode;
@@ -25,7 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
-public class PingPanel extends JPanel implements ActionListener, PingProcessListener {
+public class PingPanel extends JPanel implements PingProcessListener {
     private static final DecimalFormat LOSS_FORMAT = new DecimalFormat("0.00");
     private final PingController pingController;
     private final PingStatistics statistics = new PingStatistics(new MedianCalculator());
@@ -38,7 +41,6 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
     private JTextField host;
     private JButton startStop, clear, share, theme;
     private JPopupMenu shareMenu;
-    private JMenuItem copyStats, copyPings, copyScreenshot, saveScreenshot;
     private JSpinner count;
     private JCheckBox infinite;
     private MessageListener messageListener;
@@ -106,13 +108,13 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
         infinite.addActionListener(e -> count.setEnabled(!infinite.isSelected()));
 
         // Main buttons
-        startStop = button("Start");
+        startStop = button("Start", this::onStartStop);
         frame.getRootPane().setDefaultButton(startStop);
-        clear = button("Clear");
+        clear = button("Clear", this::onClear);
 
         // Right-side buttons
         rebuildShareMenu();
-        share = scaledThemedIconButton("Share", "share", 1.0);
+        share = scaledThemedIconButton("Share", "share", 1.0, null);
         // Show popup menu when Share button is clicked
         share.addMouseListener(new MouseAdapter() {
             @Override
@@ -123,11 +125,11 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
             }
         });
 
-        theme = scaledThemedIconButton(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode", "theme", 1.0);
+        theme = scaledThemedIconButton(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode", "theme", 1.0,
+                this::switchTheme);
 
         JPanel leftGroup = makeFlowGroup(new FlowLayout(FlowLayout.LEFT, 6, 4), hostLabel, host, countLabel, count,
                 infinite, startStop, clear);
-
         JPanel rightGroup = makeFlowGroup(new FlowLayout(FlowLayout.RIGHT, 6, 4), share, theme);
 
         // Controls panel (left/right in one row)
@@ -155,23 +157,30 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
     }
 
-    private JButton button(String text) {
+    private JButton button(String text, Runnable action) {
         JButton b = new JButton(text);
-        b.addActionListener(this);
+        if (action != null) {
+            b.addActionListener(e -> action.run());
+        }
         b.setFocusPainted(false);
         return b;
     }
 
-    private ScaledThemedIconButton scaledThemedIconButton(String text, String iconName, double heightFactor) {
+    private ScaledThemedIconButton scaledThemedIconButton(String text, String iconName, double heightFactor,
+                                                          Runnable action) {
         ScaledThemedIconButton b = new ScaledThemedIconButton(text, iconName, heightFactor);
-        b.addActionListener(this);
+        if (action != null) {
+            b.addActionListener(e -> action.run());
+        }
         b.setFocusPainted(false);
         return b;
     }
 
-    private JMenuItem menuItem(String text) {
+    private JMenuItem menuItem(String text, Runnable action) {
         JMenuItem m = new JMenuItem(text);
-        m.addActionListener(this);
+        if (action != null) {
+            m.addActionListener(e -> action.run());
+        }
         return m;
     }
 
@@ -191,34 +200,23 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
                 frame.getExtendedState());
     }
 
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        if (e.getSource().equals(startStop)) {
-            if (startStop.getText().equals("Start")) {
-                startPinging();
-                startStop.setText("Stop");
-            } else {
-                stopPinging();
-                startStop.setText("Start");
-            }
-        } else if (e.getSource().equals(clear)) {
-            boolean pinging = startStop.getText().equals("Stop");
-            pingController.stopPinging();
-            resetStats();
-            resetLabels();
-            if (pinging) {
-                startPinging();
-            }
-        } else if (e.getSource().equals(copyStats)) {
-            copyStatsToClipboard();
-        } else if (e.getSource().equals(copyPings)) {
-            copyPingsToClipboard();
-        } else if (e.getSource().equals(copyScreenshot)) {
-            copyScreenshotToClipboard();
-        } else if (e.getSource().equals(saveScreenshot)) {
-            saveScreenshot();
-        } else if (e.getSource().equals(theme)) {
-            switchTheme();
+    private void onStartStop() {
+        if (startStop.getText().equals("Start")) {
+            startPinging();
+            startStop.setText("Stop");
+        } else {
+            stopPinging();
+            startStop.setText("Start");
+        }
+    }
+
+    private void onClear() {
+        boolean pinging = startStop.getText().equals("Stop");
+        pingController.stopPinging();
+        resetStats();
+        resetLabels();
+        if (pinging) {
+            startPinging();
         }
     }
 
@@ -333,16 +331,10 @@ public class PingPanel extends JPanel implements ActionListener, PingProcessList
 
     private void rebuildShareMenu() {
         shareMenu = new JPopupMenu();
-
-        copyStats = menuItem("Copy Statistics");
-        copyPings = menuItem("Copy All Pings");
-        copyScreenshot = menuItem("Copy Screenshot");
-        saveScreenshot = menuItem("Save Screenshot");
-
-        shareMenu.add(copyStats);
-        shareMenu.add(copyPings);
-        shareMenu.add(copyScreenshot);
-        shareMenu.add(saveScreenshot);
+        shareMenu.add(menuItem("Copy Statistics", this::copyStatsToClipboard));
+        shareMenu.add(menuItem("Copy All Pings", this::copyPingsToClipboard));
+        shareMenu.add(menuItem("Copy Screenshot", this::copyScreenshotToClipboard));
+        shareMenu.add(menuItem("Save Screenshot", this::saveScreenshot));
     }
 
     private void switchTheme() {
