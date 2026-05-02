@@ -4,6 +4,7 @@ import de.matthesvoss.pingtest.gui.theme.ThemeColors;
 import de.matthesvoss.pingtest.model.PingResult;
 import de.matthesvoss.pingtest.model.PingSession;
 import de.matthesvoss.pingtest.model.PingStatistics;
+import de.matthesvoss.pingtest.model.PingStatisticsListener;
 import de.matthesvoss.pingtest.util.Formatter;
 
 import javax.swing.*;
@@ -16,7 +17,7 @@ import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class PingChart extends JPanel {
+public class PingChart extends JPanel implements PingStatisticsListener {
     static final int Y_AXIS_PAD = 8;
     private static final Stroke NORMAL_STROKE = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     private static final Stroke THIN_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
@@ -37,6 +38,7 @@ public class PingChart extends JPanel {
 
     public PingChart(PingStatistics statistics) {
         this.statistics = statistics;
+        statistics.addListener(this);
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -132,8 +134,6 @@ public class PingChart extends JPanel {
             return false;
         }
 
-        rebuildXLabelTimestamps();
-
         int hi = Collections.binarySearch(xLabelTimestamps, getMouseTs(mouseX));
         hi = hi >= 0 ? hi : -hi - 1;
         int lo = Math.max(0, hi - 1);
@@ -158,15 +158,6 @@ public class PingChart extends JPanel {
             return true;
         }
         return false;
-    }
-
-    private void rebuildXLabelTimestamps() {
-        xLabelTimestamps = statistics.getSessionTimestamps();
-        // Remove last stop timestamp and replace it with the timestamp of the last ping
-        if (!xLabelTimestamps.isEmpty() && xLabelTimestamps.size() % 2 == 0) {
-            xLabelTimestamps.remove(xLabelTimestamps.size() - 1);
-        }
-        xLabelTimestamps.add(layout.lastPingTs);
     }
 
     @Override
@@ -272,7 +263,6 @@ public class PingChart extends JPanel {
         }
 
         // Build labels
-        rebuildXLabelTimestamps();
         CenteredLabel[] xLabels = new CenteredLabel[xLabelTimestamps.size()];
         for (int i = 0; i < xLabelTimestamps.size(); i++) {
             long ts = xLabelTimestamps.get(i);
@@ -562,6 +552,20 @@ public class PingChart extends JPanel {
         }
 
         g2d.drawString(s, tx, ty);
+    }
+
+    private void rebuildXLabelTimestamps() {
+        xLabelTimestamps = statistics.getSessionTimestamps();
+        // Remove last stop timestamp and replace it with the timestamp of the last ping
+        if (!xLabelTimestamps.isEmpty() && xLabelTimestamps.size() % 2 == 0) {
+            xLabelTimestamps.remove(xLabelTimestamps.size() - 1);
+        }
+        xLabelTimestamps.add(statistics.getTimestampOfLastPing());
+    }
+
+    @Override
+    public void onStatisticsChanged() {
+        rebuildXLabelTimestamps();
     }
 
     private class CenteredLabel {

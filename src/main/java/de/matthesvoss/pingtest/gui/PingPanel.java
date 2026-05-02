@@ -79,9 +79,10 @@ public class PingPanel extends JPanel implements PingProcessListener {
         topPanel.add(createStatsPanel());
         topPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
 
+        chart = new PingChart(statistics);
+
         JPanel root = new JPanel(new BorderLayout());
         root.add(topPanel, BorderLayout.NORTH);
-        chart = new PingChart(statistics);
         root.add(chart, BorderLayout.CENTER);
         frame.setContentPane(root);
 

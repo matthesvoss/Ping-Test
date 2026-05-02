@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 public class PingStatistics {
     private final List<PingSession> sessions = new ArrayList<>();
     private final MedianCalculator medianCalc;
+    private final List<PingStatisticsListener> listeners = new ArrayList<>();
     private int sent, received, lost;
     private int best = Integer.MAX_VALUE;
     private int worst = -1;
@@ -19,8 +20,13 @@ public class PingStatistics {
         this.medianCalc = medianCalc;
     }
 
+    public void addListener(PingStatisticsListener listener) {
+        listeners.add(listener);
+    }
+
     public void startNewSession() {
         sessions.add(new PingSession(System.currentTimeMillis()));
+        listeners.forEach(PingStatisticsListener::onStatisticsChanged);
     }
 
     public void endCurrentSession() {
@@ -31,6 +37,7 @@ public class PingStatistics {
             } else {
                 sessions.remove(currentSession);
             }
+            listeners.forEach(PingStatisticsListener::onStatisticsChanged);
         }
     }
 
@@ -54,6 +61,7 @@ public class PingStatistics {
         bestPing = worstPing = lastPing = null;
         sessions.clear();
         medianCalc.clear();
+        listeners.forEach(PingStatisticsListener::onStatisticsChanged);
     }
 
     public List<PingResult> getAllPings() {
@@ -82,6 +90,7 @@ public class PingStatistics {
             medianCalc.add(rtt);
         }
         lastPing = ping;
+        listeners.forEach(PingStatisticsListener::onStatisticsChanged);
     }
 
     public int getSent() {
