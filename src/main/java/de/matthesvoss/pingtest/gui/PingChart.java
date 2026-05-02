@@ -19,11 +19,14 @@ import java.util.stream.Collectors;
 
 public class PingChart extends JPanel implements PingStatisticsListener {
     static final int Y_AXIS_PAD = 8;
+    private static final int X_AXIS_PAD = 2;
     private static final Stroke NORMAL_STROKE = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     private static final Stroke THIN_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
     private static final Stroke DIVIDER_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
             1f, new float[]{6f, 6f}, 0f);
     private static final int PING_RADIUS = 3;
+    private static final int PING_TOOLTIP_RADIUS = 5;
+    private static final int PING_TOOLTIP_OFFSET = 6;
     private static final int PING_HOVER_RADIUS = 30;
     private static final int TICK_SIZE = 4;
     private static final float X_LABEL_BLEND_ALPHA = 0.3f;
@@ -240,14 +243,14 @@ public class PingChart extends JPanel implements PingStatisticsListener {
 
     private void drawAxesLabels(Graphics2D g2d) {
         // Top y-axis label
-        int topLabelX = layout.plotLeft - Y_AXIS_PAD - layout.yLabelWidth;
+        int topLabelX = layout.plotLeft - Y_AXIS_PAD - layout.yTopLabelWidth;
         int topLabelY = layout.plotTop + layout.fm.getAscent();
-        g2d.drawString(layout.yTop, Math.max(2, topLabelX), Math.max(layout.fm.getAscent(), topLabelY));
+        g2d.drawString(layout.yTopLabel, topLabelX, topLabelY);
         // Bottom y-axis label
         String yBottom = "0ms";
         int bottomLabelX = layout.plotLeft - Y_AXIS_PAD - layout.fm.stringWidth(yBottom);
-        int bottomLabelY = layout.plotBottom - 2;
-        g2d.drawString(yBottom, Math.max(2, bottomLabelX), bottomLabelY);
+        int bottomLabelY = layout.plotBottom - X_AXIS_PAD;
+        g2d.drawString(yBottom, bottomLabelX, bottomLabelY);
 
         // X-axis labels
         int xLabelY = layout.plotBottom + layout.fm.getAscent() + TICK_SIZE;
@@ -535,20 +538,21 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         py = Math.max(layout.plotTop, py);
 
         g2d.setColor(ThemeColors.axis());
-        g2d.drawOval(px - 5, py - 5, 10, 10);
+        g2d.drawOval(px - PING_TOOLTIP_RADIUS, py - PING_TOOLTIP_RADIUS, PING_TOOLTIP_RADIUS * 2,
+                PING_TOOLTIP_RADIUS * 2);
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
         String s = Formatter.formatTimestampMs(ts) + " " + (hoveredPing.isTimeout() ? "Request timed out" : val + "ms");
-        int tx = px + 6;
-        int ty = py - 6;
+        int tx = px + PING_TOOLTIP_OFFSET;
+        int ty = py - PING_TOOLTIP_OFFSET;
 
         if (tx > getWidth() - layout.fm.stringWidth(s)) {
-            tx = px - layout.fm.stringWidth(s) - 6;
+            tx = px - layout.fm.stringWidth(s) - PING_TOOLTIP_OFFSET;
         }
         tx = Math.max(tx, layout.plotLeft);
 
         ty = Math.min(ty, layout.plotBottom);
         if (ty < layout.fm.getAscent()) {
-            ty = py + layout.fm.getAscent() + 6;
+            ty = py + layout.fm.getAscent() + PING_TOOLTIP_OFFSET;
         }
 
         g2d.drawString(s, tx, ty);

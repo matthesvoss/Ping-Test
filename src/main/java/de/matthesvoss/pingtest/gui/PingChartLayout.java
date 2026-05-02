@@ -10,18 +10,18 @@ class PingChartLayout {
     long startTs, lastPingTs, plotTimeSpan;
     double xScale, yScale;
     FontMetrics fm;
-    String yTop;
-    int yLabelWidth;
+    String yTopLabel;
+    int yTopLabelWidth;
 
     void compute(Graphics2D g2d, PingStatistics statistics, int width, int height) {
         PingResult worstPing = statistics.getWorst();
         int worst = worstPing == null || worstPing.isTimeout() ? -1 : worstPing.getRtt();
 
         fm = g2d.getFontMetrics();
-        yTop = (worst <= 0 ? "0" : worst) + "ms";
-        yLabelWidth = fm.stringWidth(yTop);
+        yTopLabel = (worst <= 0 ? "0" : worst) + "ms";
+        yTopLabelWidth = fm.stringWidth(yTopLabel);
         int xLabelHeight = fm.getHeight();
-        int leftMargin = Math.max(40, yLabelWidth + PingChart.Y_AXIS_PAD * 2);
+        int leftMargin = Math.max(40, yTopLabelWidth + PingChart.Y_AXIS_PAD * 2);
         int bottomMargin = Math.max(28, xLabelHeight + PingChart.Y_AXIS_PAD * 2);
         int rightMargin = 12;
         int topMargin = 12;
