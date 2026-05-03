@@ -343,8 +343,10 @@ public class PingChart extends JPanel implements PingStatisticsListener {
     }
 
     private void drawPingData(Graphics2D g2d) {
-        // Use LOD if there are far more points than pixels
-        boolean useLOD = statistics.getElapsedTime() / statistics.getSent() < layout.plotTimeSpan / layout.plotW;
+        // Use LOD if there are more pings than pixels
+        double timeBetweenPings = (double) statistics.getElapsedTime() / statistics.getSent();
+        double timeBetweenPixels = (double) layout.plotTimeSpan / layout.plotW;
+        boolean useLOD = timeBetweenPings < timeBetweenPixels;
 
         if (useLOD) {
             drawPingsLOD(g2d);
@@ -472,7 +474,6 @@ public class PingChart extends JPanel implements PingStatisticsListener {
     }
 
     private void drawPingsExact(Graphics2D g2d) {
-        // Exact Path2D polyline (no decimation)
         Path2D pingPath = new Path2D.Double();
         boolean lastIsTimeout = false;
         int lastX = 0, lastY = 0;
