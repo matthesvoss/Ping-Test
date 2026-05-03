@@ -8,15 +8,15 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ResourceLoader {
     private static final String ICON_DIR = "/de/matthesvoss/pingtest/icons/";
     private static final String ICON_EXTENSION = ".png";
     private static final String[] FRAME_ICON_RESOLUTIONS = {"16", "32", "64", "128"};
-    private static final Map<String, BufferedImage> imageBuffer = new HashMap<>();
+    private static final Map<String, BufferedImage> imageBuffer = new ConcurrentHashMap<>();
 
     private static BufferedImage loadImage(String path) {
         BufferedImage image = imageBuffer.getOrDefault(path, null);
