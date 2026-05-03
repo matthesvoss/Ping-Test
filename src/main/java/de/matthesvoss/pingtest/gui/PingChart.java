@@ -229,7 +229,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
 
     private void drawAxes(Graphics2D g2d) {
         // Draw axes (left Y-axis, bottom X-axis)
-        g2d.setColor(ThemeColors.axis());
+        g2d.setColor(ThemeColors.foreground());
         g2d.setStroke(THIN_STROKE);
         g2d.drawLine(layout.plotLeft, layout.plotTop, layout.plotLeft, layout.plotBottom);
         g2d.drawLine(layout.plotLeft, layout.plotBottom, layout.plotRight, layout.plotBottom);
@@ -538,7 +538,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         px = Math.min(layout.plotRight, px);
         py = Math.max(layout.plotTop, py);
 
-        g2d.setColor(ThemeColors.axis());
+        g2d.setColor(ThemeColors.foreground());
         g2d.drawOval(px - PING_TOOLTIP_RADIUS, py - PING_TOOLTIP_RADIUS, PING_TOOLTIP_RADIUS * 2,
                 PING_TOOLTIP_RADIUS * 2);
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
