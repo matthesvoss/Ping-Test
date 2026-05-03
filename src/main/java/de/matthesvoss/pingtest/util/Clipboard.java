@@ -4,7 +4,7 @@ import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.image.BufferedImage;
 
-public class Clipboard {
+public final class Clipboard {
     private Clipboard() {
     }
 

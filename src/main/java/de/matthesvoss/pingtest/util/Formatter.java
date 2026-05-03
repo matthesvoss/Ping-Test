@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-public class Formatter {
+public final class Formatter {
     private static final DateTimeFormatter S_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final DateTimeFormatter MS_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 

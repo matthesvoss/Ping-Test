@@ -4,7 +4,7 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 
-public class ThemeManager {
+public final class ThemeManager {
     private static boolean darkTheme;
 
     private ThemeManager() {

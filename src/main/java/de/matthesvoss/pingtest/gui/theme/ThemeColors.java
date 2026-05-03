@@ -4,7 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.Optional;
 
-public class ThemeColors {
+public final class ThemeColors {
     private static Color accentColor;
     private static Color dangerColor;
     private static Color axisColor;

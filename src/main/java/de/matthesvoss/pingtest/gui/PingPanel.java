@@ -54,14 +54,6 @@ public class PingPanel extends JPanel implements PingProcessListener {
         LOSS_FORMAT.setRoundingMode(RoundingMode.HALF_UP);
     }
 
-    private static JPanel makeFlowGroup(LayoutManager layout, Component... components) {
-        JPanel p = new JPanel(layout);
-        for (Component c : components) {
-            p.add(c);
-        }
-        return p;
-    }
-
     public void createAndShow() {
         frame = new JFrame("Ping Test");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -109,13 +101,13 @@ public class PingPanel extends JPanel implements PingProcessListener {
         infinite.addActionListener(e -> count.setEnabled(!infinite.isSelected()));
 
         // Main buttons
-        startStop = button("Start", this::onStartStop);
+        startStop = UI.button("Start", this::onStartStop);
         frame.getRootPane().setDefaultButton(startStop);
-        clear = button("Clear", this::onClear);
+        clear = UI.button("Clear", this::onClear);
 
         // Right-side buttons
         rebuildShareMenu();
-        share = scaledThemedIconButton("Share", "share", 1.0, null);
+        share = UI.iconButton("Share", "share", 1.0, null);
         // Show popup menu when Share button is clicked
         share.addMouseListener(new MouseAdapter() {
             @Override
@@ -126,12 +118,12 @@ public class PingPanel extends JPanel implements PingProcessListener {
             }
         });
 
-        theme = scaledThemedIconButton(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode", "theme", 1.0,
+        theme = UI.iconButton(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode", "theme", 1.0,
                 this::switchTheme);
 
-        JPanel leftGroup = makeFlowGroup(new FlowLayout(FlowLayout.LEFT, 6, 4), hostLabel, host, countLabel, count,
+        JPanel leftGroup = UI.panel(new FlowLayout(FlowLayout.LEFT, 6, 4), hostLabel, host, countLabel, count,
                 infinite, startStop, clear);
-        JPanel rightGroup = makeFlowGroup(new FlowLayout(FlowLayout.RIGHT, 6, 4), share, theme);
+        JPanel rightGroup = UI.panel(new FlowLayout(FlowLayout.RIGHT, 6, 4), share, theme);
 
         // Controls panel (left/right in one row)
         JPanel controlsPanel = new JPanel(new BorderLayout());
@@ -154,35 +146,8 @@ public class PingPanel extends JPanel implements PingProcessListener {
         lastLabel = new JLabel("Last: ms");
         elapsedLabel = new JLabel("Elapsed: 00:00:00");
 
-        return makeFlowGroup(new WrapLayout(FlowLayout.CENTER, 6, 0), sentLabel, receivedLabel, lostLabel, lossLabel,
+        return UI.panel(new WrapLayout(FlowLayout.CENTER, 6, 0), sentLabel, receivedLabel, lostLabel, lossLabel,
                 bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
-    }
-
-    private JButton button(String text, Runnable action) {
-        JButton b = new JButton(text);
-        if (action != null) {
-            b.addActionListener(e -> action.run());
-        }
-        b.setFocusPainted(false);
-        return b;
-    }
-
-    private ScaledThemedIconButton scaledThemedIconButton(String text, String iconName, double heightFactor,
-                                                          Runnable action) {
-        ScaledThemedIconButton b = new ScaledThemedIconButton(text, iconName, heightFactor);
-        if (action != null) {
-            b.addActionListener(e -> action.run());
-        }
-        b.setFocusPainted(false);
-        return b;
-    }
-
-    private JMenuItem menuItem(String text, Runnable action) {
-        JMenuItem m = new JMenuItem(text);
-        if (action != null) {
-            m.addActionListener(e -> action.run());
-        }
-        return m;
     }
 
     public JFrame getFrame() {
@@ -332,10 +297,10 @@ public class PingPanel extends JPanel implements PingProcessListener {
 
     private void rebuildShareMenu() {
         shareMenu = new JPopupMenu();
-        shareMenu.add(menuItem("Copy Statistics", this::copyStatsToClipboard));
-        shareMenu.add(menuItem("Copy All Pings", this::copyPingsToClipboard));
-        shareMenu.add(menuItem("Copy Screenshot", this::copyScreenshotToClipboard));
-        shareMenu.add(menuItem("Save Screenshot", this::saveScreenshot));
+        shareMenu.add(UI.menuItem("Copy Statistics", this::copyStatsToClipboard));
+        shareMenu.add(UI.menuItem("Copy All Pings", this::copyPingsToClipboard));
+        shareMenu.add(UI.menuItem("Copy Screenshot", this::copyScreenshotToClipboard));
+        shareMenu.add(UI.menuItem("Save Screenshot", this::saveScreenshot));
     }
 
     private void switchTheme() {
