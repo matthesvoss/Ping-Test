@@ -560,7 +560,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         g2d.drawOval(px - PING_TOOLTIP_RADIUS, py - PING_TOOLTIP_RADIUS, PING_TOOLTIP_RADIUS * 2,
                 PING_TOOLTIP_RADIUS * 2);
 
-        String s = (hoveredPing.isTimeout() ? "Request timed out" : val + "ms") + " " + Formatter.formatTimestampMs(ts);
+        String s = (hoveredPing.isTimeout() ? "Timeout" : val + "ms") + " " + Formatter.formatTimestampMs(ts);
         int width = layout.boldFm.stringWidth(s);
         int height = layout.boldFm.getAscent();
         int tx = px + PING_TOOLTIP_OFFSET;

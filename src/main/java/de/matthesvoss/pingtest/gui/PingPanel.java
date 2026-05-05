@@ -257,7 +257,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
                     lossLabel.getText(), bestLabel.getText(), averageLabel.getText(), medianLabel.getText(),
                     worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText()));
             for (PingResult ping : statistics.getAllPings()) {
-                String value = ping.isTimeout() ? "Request timed out" : ping.getRtt() + "ms";
+                String value = ping.isTimeout() ? "Timeout" : ping.getRtt() + "ms";
                 lines.add(Formatter.formatTimestampMs(ping.getTimestamp()) + "\t" + value);
             }
             Clipboard.copyToClipboard(String.join("\n", lines));
