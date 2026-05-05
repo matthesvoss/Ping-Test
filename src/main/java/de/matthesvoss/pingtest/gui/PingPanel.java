@@ -45,8 +45,6 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private JCheckBox infinite;
     private MessageListener messageListener;
     private String lastHost = "";
-    // TODO: separate labels further, add light colors to label backgrounds,
-    //  add last ping to right side, end of ping spikes detection, ipv4/6
 
     public PingPanel(PingController pingController, PreferencesManager prefs) {
         this.pingController = pingController;
