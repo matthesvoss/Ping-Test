@@ -126,7 +126,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
 
     private boolean updateHoveredXLabel(int mouseX, int mouseY) {
         int xLabelTop = layout.plotBottom + TICK_SIZE;
-        int xLabelBottom = xLabelTop + layout.fm.getHeight();
+        int xLabelBottom = xLabelTop + layout.plainFm.getHeight();
 
         if (statistics.isReset() || mouseY < xLabelTop - X_LABEL_HOVER_Y_PAD
                 || mouseY > xLabelBottom + X_LABEL_HOVER_Y_PAD) {
@@ -244,16 +244,16 @@ public class PingChart extends JPanel implements PingStatisticsListener {
     private void drawAxesLabels(Graphics2D g2d) {
         // Top y-axis label
         int topLabelX = layout.plotLeft - BORDER_PAD - layout.yTopLabelWidth;
-        int topLabelY = layout.plotTop + layout.fm.getAscent();
+        int topLabelY = layout.plotTop + layout.plainFm.getAscent();
         g2d.drawString(layout.yTopLabel, topLabelX, topLabelY);
         // Bottom y-axis label
         String yBottom = "0ms";
-        int bottomLabelX = layout.plotLeft - BORDER_PAD - layout.fm.stringWidth(yBottom);
+        int bottomLabelX = layout.plotLeft - BORDER_PAD - layout.plainFm.stringWidth(yBottom);
         int bottomLabelY = layout.plotBottom - BOTTOM_Y_LABEL_X_AXIS_PAD;
         g2d.drawString(yBottom, bottomLabelX, bottomLabelY);
 
         // X-axis labels
-        int xLabelY = layout.plotBottom + layout.fm.getAscent() + TICK_SIZE;
+        int xLabelY = layout.plotBottom + layout.plainFm.getAscent() + TICK_SIZE;
         if (statistics.isReset()) {
             String text = "00:00:00";
 
@@ -536,8 +536,8 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         String s = lastPing.isTimeout() ? "Timeout" : lastPing.getRtt() + "ms";
         int val = lastPing.isTimeout() ? 0 : lastPing.getRtt();
         int x = layout.plotRight + BORDER_PAD;
-        int y = layout.plotBottom - (int) Math.round(val * layout.yScale - layout.fm.getAscent() / 2.0);
-        y = Math.max(layout.fm.getAscent(), y);
+        int y = layout.plotBottom - (int) Math.round(val * layout.yScale - layout.boldFm.getAscent() / 2.0);
+        y = Math.max(layout.boldFm.getAscent(), y);
 
         g2d.setColor(ThemeColors.foreground());
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
@@ -561,8 +561,8 @@ public class PingChart extends JPanel implements PingStatisticsListener {
                 PING_TOOLTIP_RADIUS * 2);
 
         String s = Formatter.formatTimestampMs(ts) + " " + (hoveredPing.isTimeout() ? "Request timed out" : val + "ms");
-        int width = layout.fm.stringWidth(s);
-        int height = layout.fm.getAscent();
+        int width = layout.boldFm.stringWidth(s);
+        int height = layout.boldFm.getAscent();
         int tx = px + PING_TOOLTIP_OFFSET;
         int ty = py - PING_TOOLTIP_OFFSET;
 
@@ -603,7 +603,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
             this.text = text;
             this.x = x;
             this.y = y;
-            width = layout.fm.stringWidth(text);
+            width = layout.plainFm.stringWidth(text);
             int hw = width / 2;
             left = x - hw;
             right = x + hw;
@@ -613,8 +613,8 @@ public class PingChart extends JPanel implements PingStatisticsListener {
             if (clearBackground) {
                 Color prev = g2d.getColor();
                 g2d.setColor(getBackground());
-                g2d.fillRect(left - X_LABEL_PAD, y - layout.fm.getAscent(), width + X_LABEL_PAD * 2,
-                        layout.fm.getHeight() + X_LABEL_PAD);
+                g2d.fillRect(left - X_LABEL_PAD, y - layout.plainFm.getAscent(), width + X_LABEL_PAD * 2,
+                        layout.plainFm.getHeight() + X_LABEL_PAD);
                 g2d.setColor(prev);
             }
             g2d.drawLine(x, layout.plotBottom, x, layout.plotBottom + TICK_SIZE);

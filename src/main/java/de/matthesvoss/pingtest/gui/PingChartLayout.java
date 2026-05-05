@@ -9,7 +9,7 @@ class PingChartLayout {
     int plotLeft, plotRight, plotTop, plotBottom, plotW, plotH;
     long startTs, lastPingTs, plotTimeSpan;
     double xScale, yScale;
-    FontMetrics fm;
+    FontMetrics plainFm, boldFm;
     String yTopLabel;
     int yTopLabelWidth;
     int lastPingMaxWidth;
@@ -18,11 +18,12 @@ class PingChartLayout {
         PingResult worstPing = statistics.getWorst();
         int worst = worstPing == null || worstPing.isTimeout() ? -1 : worstPing.getRtt();
 
-        fm = g2d.getFontMetrics();
+        plainFm = g2d.getFontMetrics();
+        boldFm = g2d.getFontMetrics(g2d.getFont().deriveFont(Font.BOLD));
         yTopLabel = (worst == -1 ? "0" : worst) + "ms";
-        yTopLabelWidth = fm.stringWidth(yTopLabel);
-        lastPingMaxWidth = fm.stringWidth("Timeout");
-        int xLabelHeight = fm.getHeight();
+        yTopLabelWidth = plainFm.stringWidth(yTopLabel);
+        lastPingMaxWidth = boldFm.stringWidth("Timeout");
+        int xLabelHeight = plainFm.getHeight();
         int leftMargin = yTopLabelWidth + PingChart.BORDER_PAD * 2;
         int bottomMargin = xLabelHeight + PingChart.TICK_SIZE + PingChart.BORDER_PAD;
         int rightMargin = lastPingMaxWidth + PingChart.BORDER_PAD * 2;
