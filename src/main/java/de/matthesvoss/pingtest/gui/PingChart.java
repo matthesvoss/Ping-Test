@@ -353,7 +353,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         } else {
             drawPingsExact(g2d);
         }
-        drawLastPingLabel(g2d);
+        drawLastPing(g2d);
     }
 
     private void drawPingsLOD(Graphics2D g2d) {
@@ -527,7 +527,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         g2d.draw(pingPath);
     }
 
-    private void drawLastPingLabel(Graphics2D g2d) {
+    private void drawLastPing(Graphics2D g2d) {
         PingResult lastPing = statistics.getLast();
         if (lastPing == null) {
             return;
@@ -535,13 +535,21 @@ public class PingChart extends JPanel implements PingStatisticsListener {
 
         String s = lastPing.isTimeout() ? "Timeout" : lastPing.getRtt() + "ms";
         int val = lastPing.isTimeout() ? 0 : lastPing.getRtt();
-        int x = layout.plotRight + BORDER_PAD;
-        int y = layout.plotBottom - (int) Math.round(val * layout.yScale - layout.boldFm.getAscent() / 2.0);
-        y = Math.max(layout.boldFm.getAscent(), y);
 
+        int x = layout.plotRight;
+        int y = layout.plotBottom - (int) Math.round(val * layout.yScale);
+        y = Math.max(layout.plotTop, Math.min(layout.plotBottom, y));
+
+        int labelX = layout.plotRight + BORDER_PAD;
+        int labelY = layout.plotBottom - (int) Math.round(val * layout.yScale - layout.boldFm.getAscent() / 2.0);
+        labelY = Math.max(layout.boldFm.getAscent(), labelY);
+        // Draw circle
+        g2d.setColor(lastPing.isTimeout() ? ThemeColors.danger() : ThemeColors.accent());
+        g2d.fillOval(x - PING_RADIUS, y - PING_RADIUS, PING_RADIUS * 2, PING_RADIUS * 2);
+        // Draw label
         g2d.setColor(ThemeColors.foreground());
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
-        g2d.drawString(s, x, y);
+        g2d.drawString(s, labelX, labelY);
     }
 
     private void drawTooltip(Graphics2D g2d) {
@@ -555,7 +563,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         int py = layout.plotBottom - (int) Math.round(val * layout.yScale);
         px = Math.min(layout.plotRight, px);
         py = Math.max(layout.plotTop, py);
-
+        // Draw circle around hovered ping
         g2d.setColor(ThemeColors.foreground());
         g2d.drawOval(px - PING_TOOLTIP_RADIUS, py - PING_TOOLTIP_RADIUS, PING_TOOLTIP_RADIUS * 2,
                 PING_TOOLTIP_RADIUS * 2);
@@ -585,7 +593,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         g2d.setStroke(THIN_STROKE);
         g2d.drawRect(tx - X_LABEL_PAD, ty - layout.boldFm.getAscent(), width + X_LABEL_PAD * 2,
                 layout.boldFm.getHeight() + X_LABEL_PAD);
-        // Draw text
+        // Draw tooltip
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
         g2d.drawString(s, tx, ty);
     }
