@@ -589,11 +589,12 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         g2d.setColor(getBackground());
         g2d.fillRect(tx - X_LABEL_PAD, ty - layout.boldFm.getAscent(), width + X_LABEL_PAD * 2,
                 layout.boldFm.getHeight() + X_LABEL_PAD);
-        g2d.setColor(prev);
+        g2d.setColor(ThemeColors.border());
         g2d.setStroke(THIN_STROKE);
         g2d.drawRect(tx - X_LABEL_PAD, ty - layout.boldFm.getAscent(), width + X_LABEL_PAD * 2,
                 layout.boldFm.getHeight() + X_LABEL_PAD);
         // Draw tooltip
+        g2d.setColor(prev);
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
         g2d.drawString(s, tx, ty);
     }
