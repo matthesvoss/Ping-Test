@@ -18,8 +18,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class PingChart extends JPanel implements PingStatisticsListener {
-    static final int Y_AXIS_PAD = 8;
-    private static final int X_AXIS_PAD = 2;
+    static final int BORDER_PAD = 8;
+    static final int TICK_SIZE = 4;
+    private static final int BOTTOM_Y_LABEL_X_AXIS_PAD = 2;
     private static final Stroke NORMAL_STROKE = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     private static final Stroke THIN_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
     private static final Stroke DIVIDER_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
@@ -28,7 +29,6 @@ public class PingChart extends JPanel implements PingStatisticsListener {
     private static final int PING_TOOLTIP_RADIUS = 5;
     private static final int PING_TOOLTIP_OFFSET = 6;
     private static final int PING_HOVER_RADIUS = 30;
-    private static final int TICK_SIZE = 4;
     private static final float X_LABEL_BLEND_ALPHA = 0.3f;
     private static final int X_LABEL_HOVER_Y_PAD = 4;
     private static final int X_LABEL_HOVER_X = 24;
@@ -243,13 +243,13 @@ public class PingChart extends JPanel implements PingStatisticsListener {
 
     private void drawAxesLabels(Graphics2D g2d) {
         // Top y-axis label
-        int topLabelX = layout.plotLeft - Y_AXIS_PAD - layout.yTopLabelWidth;
+        int topLabelX = layout.plotLeft - BORDER_PAD - layout.yTopLabelWidth;
         int topLabelY = layout.plotTop + layout.fm.getAscent();
         g2d.drawString(layout.yTopLabel, topLabelX, topLabelY);
         // Bottom y-axis label
         String yBottom = "0ms";
-        int bottomLabelX = layout.plotLeft - Y_AXIS_PAD - layout.fm.stringWidth(yBottom);
-        int bottomLabelY = layout.plotBottom - X_AXIS_PAD;
+        int bottomLabelX = layout.plotLeft - BORDER_PAD - layout.fm.stringWidth(yBottom);
+        int bottomLabelY = layout.plotBottom - BOTTOM_Y_LABEL_X_AXIS_PAD;
         g2d.drawString(yBottom, bottomLabelX, bottomLabelY);
 
         // X-axis labels
@@ -353,6 +353,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         } else {
             drawPingsExact(g2d);
         }
+        drawLastPingLabel(g2d);
     }
 
     private void drawPingsLOD(Graphics2D g2d) {
@@ -526,6 +527,23 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         g2d.draw(pingPath);
     }
 
+    private void drawLastPingLabel(Graphics2D g2d) {
+        PingResult lastPing = statistics.getLast();
+        if (lastPing == null) {
+            return;
+        }
+
+        String s = lastPing.isTimeout() ? "Timeout" : lastPing.getRtt() + "ms";
+        int val = lastPing.isTimeout() ? 0 : lastPing.getRtt();
+        int x = layout.plotRight + BORDER_PAD;
+        int y = layout.plotBottom - (int) Math.round(val * layout.yScale - layout.fm.getAscent() / 2.0);
+        y = Math.max(layout.fm.getAscent(), y);
+
+        g2d.setColor(ThemeColors.foreground());
+        g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
+        g2d.drawString(s, x, y);
+    }
+
     private void drawTooltip(Graphics2D g2d) {
         if (hoveredPing == null) {
             return;
@@ -541,21 +559,24 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         g2d.setColor(ThemeColors.foreground());
         g2d.drawOval(px - PING_TOOLTIP_RADIUS, py - PING_TOOLTIP_RADIUS, PING_TOOLTIP_RADIUS * 2,
                 PING_TOOLTIP_RADIUS * 2);
-        g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
+
         String s = Formatter.formatTimestampMs(ts) + " " + (hoveredPing.isTimeout() ? "Request timed out" : val + "ms");
+        int width = layout.fm.stringWidth(s);
+        int height = layout.fm.getAscent();
         int tx = px + PING_TOOLTIP_OFFSET;
         int ty = py - PING_TOOLTIP_OFFSET;
 
-        if (tx > getWidth() - layout.fm.stringWidth(s)) {
-            tx = px - layout.fm.stringWidth(s) - PING_TOOLTIP_OFFSET;
+        if (tx > layout.plotRight - width) {
+            tx = px - width - PING_TOOLTIP_OFFSET;
         }
         tx = Math.max(tx, layout.plotLeft);
 
         ty = Math.min(ty, layout.plotBottom);
-        if (ty < layout.fm.getAscent()) {
-            ty = py + layout.fm.getAscent() + PING_TOOLTIP_OFFSET;
+        if (ty < height) {
+            ty = py + height + PING_TOOLTIP_OFFSET;
         }
 
+        g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
         g2d.drawString(s, tx, ty);
     }
 
