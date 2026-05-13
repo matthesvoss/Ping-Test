@@ -42,6 +42,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private JButton startStop, clear, share, theme;
     private JPopupMenu shareMenu;
     private JSpinner count;
+    private JFormattedTextField countFtf;
     private JCheckBox infinite;
     private MessageListener messageListener;
     private String lastHost = "";
@@ -91,12 +92,19 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private JPanel createControlsPanel() {
         // Host and count controls
         JLabel hostLabel = new JLabel("Host:");
-        host = new JTextField(prefs.getHost("google.com"), 20);
+        host = new JTextField(prefs.getHost("google.com"), 15);
+
         JLabel countLabel = new JLabel("Count:");
         count = new JSpinner(new SpinnerNumberModel(10, 1, 86400, 1));
         count.setEnabled(false);
+        JComponent editor = count.getEditor();
+        if (editor instanceof JSpinner.DefaultEditor) {
+            countFtf = ((JSpinner.DefaultEditor) editor).getTextField();
+            countFtf.setColumns(4);
+        }
+
         infinite = new JCheckBox("Infinite", true);
-        infinite.addActionListener(e -> count.setEnabled(!infinite.isSelected()));
+        infinite.addActionListener(e -> onInfinite());
 
         // Main buttons
         startStop = UI.button("Start", this::onStartStop);
@@ -163,6 +171,11 @@ public class PingPanel extends JPanel implements PingProcessListener {
                 frame.getExtendedState());
     }
 
+    private void onInfinite() {
+        count.setEnabled(!infinite.isSelected());
+        commitCountEdit();
+    }
+
     private void onStartStop() {
         if (startStop.getText().equals("Start")) {
             startPinging();
@@ -183,6 +196,17 @@ public class PingPanel extends JPanel implements PingProcessListener {
         }
     }
 
+    private void commitCountEdit() {
+        try {
+            count.commitEdit();
+        } catch (ParseException ex) {
+            // Reset spinner to last valid value
+            if (countFtf != null) {
+                countFtf.setValue(count.getValue());
+            }
+        }
+    }
+
     private void startPinging() {
         if (!lastHost.isEmpty() && !host.getText().equals(lastHost)) {
             clear.doClick();
@@ -193,15 +217,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
 
         int countVal = -1;
         if (!infinite.isSelected()) {
-            try {
-                count.commitEdit();
-            } catch (ParseException ex) {
-                // Reset spinner to last valid value
-                JComponent editor = count.getEditor();
-                if (editor instanceof JSpinner.DefaultEditor) {
-                    ((JSpinner.DefaultEditor) editor).getTextField().setValue(count.getValue());
-                }
-            }
+            commitCountEdit();
             countVal = (int) count.getValue();
         }
 
