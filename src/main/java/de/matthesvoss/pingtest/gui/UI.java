@@ -1,5 +1,6 @@
 package de.matthesvoss.pingtest.gui;
 
+import de.matthesvoss.pingtest.gui.theme.ThemeColors;
 import de.matthesvoss.pingtest.util.ScaledThemedIconButton;
 
 import javax.swing.*;
@@ -26,8 +27,7 @@ final class UI {
         return b;
     }
 
-    static ScaledThemedIconButton iconButton(String text, String iconName, double heightFactor,
-                                             Runnable action) {
+    static ScaledThemedIconButton iconButton(String text, String iconName, double heightFactor, Runnable action) {
         ScaledThemedIconButton b = new ScaledThemedIconButton(text, iconName, heightFactor);
         if (action != null) {
             b.addActionListener(e -> action.run());
@@ -42,5 +42,33 @@ final class UI {
             m.addActionListener(e -> action.run());
         }
         return m;
+    }
+
+    static JLabel paddedLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setBorder(BorderFactory.createEmptyBorder(2, 10, 2, 10));
+        return l;
+    }
+
+    static JPanel separatorPanel(LayoutManager layout, Component... components) {
+        JPanel p = new JPanel(layout) {
+            @Override
+            protected void paintChildren(Graphics g) {
+                super.paintChildren(g);
+
+                // Paint custom separator
+                g.setColor(ThemeColors.separator());
+                for (int i = 0; i < getComponentCount() - 1; i++) {
+                    Component a = getComponent(i), b = getComponent(i + 1);
+                    if (a.getY() == b.getY()) {
+                        g.drawLine(b.getX(), a.getY() + 2, b.getX(), a.getY() + a.getHeight() - 2);
+                    }
+                }
+            }
+        };
+        for (Component c : components) {
+            p.add(c);
+        }
+        return p;
     }
 }

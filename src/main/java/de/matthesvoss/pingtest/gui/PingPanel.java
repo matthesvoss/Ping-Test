@@ -133,19 +133,19 @@ public class PingPanel extends JPanel implements PingProcessListener {
 
     private JPanel createStatsPanel() {
         // Stats labels
-        sentLabel = new JLabel("Sent: ");
-        receivedLabel = new JLabel("Received: ");
-        lostLabel = new JLabel("Lost: ");
-        lossLabel = new JLabel("Loss: %");
-        bestLabel = new JLabel("Best: ms");
-        averageLabel = new JLabel("Average: ms");
-        medianLabel = new JLabel("Median: ms");
-        worstLabel = new JLabel("Worst: ms");
-        lastLabel = new JLabel("Last: ms");
-        elapsedLabel = new JLabel("Elapsed: 00:00:00");
+        sentLabel = UI.paddedLabel("Sent: ");
+        receivedLabel = UI.paddedLabel("Received: ");
+        lostLabel = UI.paddedLabel("Lost: ");
+        lossLabel = UI.paddedLabel("Loss: %");
+        bestLabel = UI.paddedLabel("Best: ms");
+        averageLabel = UI.paddedLabel("Average: ms");
+        medianLabel = UI.paddedLabel("Median: ms");
+        worstLabel = UI.paddedLabel("Worst: ms");
+        lastLabel = UI.paddedLabel("Last: ms");
+        elapsedLabel = UI.paddedLabel("Elapsed: 00:00:00");
 
-        return UI.panel(new WrapLayout(FlowLayout.CENTER, 6, 0), sentLabel, receivedLabel, lostLabel, lossLabel,
-                bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
+        return UI.separatorPanel(new WrapLayout(FlowLayout.CENTER, 0, 0), sentLabel, receivedLabel, lostLabel,
+                lossLabel, bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
     }
 
     public JFrame getFrame() {

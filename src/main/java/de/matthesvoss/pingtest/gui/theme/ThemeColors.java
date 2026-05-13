@@ -11,6 +11,7 @@ public final class ThemeColors {
     private static Color stoppedBandColor;
     private static Color dividerColor;
     private static Color borderColor;
+    private static Color separatorColor;
 
     private ThemeColors() {
     }
@@ -26,6 +27,8 @@ public final class ThemeColors {
         dividerColor = withAlpha(foregroundColor, 170);
         borderColor = Optional.ofNullable(UIManager.getColor("Component.borderColor"))
                 .orElse(Color.LIGHT_GRAY);
+        separatorColor = Optional.ofNullable(UIManager.getColor("Separator.foreground"))
+                .orElse(Color.GRAY);
     }
 
     private static Color withAlpha(Color c, int alpha) {
@@ -54,5 +57,9 @@ public final class ThemeColors {
 
     public static Color border() {
         return borderColor;
+    }
+
+    public static Color separator() {
+        return separatorColor;
     }
 }
