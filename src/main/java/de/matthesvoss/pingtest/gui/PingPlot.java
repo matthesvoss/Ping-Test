@@ -17,7 +17,7 @@ import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class PingChart extends JPanel implements PingStatisticsListener {
+public class PingPlot extends JPanel implements PingStatisticsListener {
     static final int BORDER_PAD = 8;
     static final int TICK_SIZE = 4;
     private static final int BOTTOM_Y_LABEL_X_AXIS_PAD = 2;
@@ -34,12 +34,12 @@ public class PingChart extends JPanel implements PingStatisticsListener {
     private static final int X_LABEL_HOVER_X = 24;
     private static final int X_LABEL_PAD = 2;
     private final PingStatistics statistics;
-    private final PingChartLayout layout = new PingChartLayout();
+    private final PingPlotLayout layout = new PingPlotLayout();
     private List<Long> xLabelTimestamps = new ArrayList<>();
     private PingResult hoveredPing;
     private int hoveredXLabel = -1;
 
-    public PingChart(PingStatistics statistics) {
+    public PingPlot(PingStatistics statistics) {
         this.statistics = statistics;
         statistics.addListener(this);
 
@@ -67,7 +67,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
 
     private boolean updateHoveredPing(int mouseX, int mouseY) {
         List<PingResult> pings = statistics.getAllPings();
-        if (pings.isEmpty() || layout.plotTimeSpan <= 0 || layout.plotW <= 0 || layout.plotH <= 0) {
+        if (pings.isEmpty() || layout.plotTimeSpan <= 0 || layout.plotWidth <= 0 || layout.plotHeight <= 0) {
             if (hoveredPing != null) {
                 hoveredPing = null;
                 return true;
@@ -106,11 +106,11 @@ public class PingChart extends JPanel implements PingStatisticsListener {
             }
 
             long ts = pingTimestamps.get(i);
-            int px = layout.plotLeft + (int) Math.round((ts - layout.startTs) * layout.xScale);
-            int py = layout.plotBottom - (int) Math.round(val * layout.yScale);
-            int dx = px - mouseX;
-            int dy = py - mouseY;
-            int d2 = dx * dx + dy * dy;
+            int pX = layout.plotLeft + (int) Math.round((ts - layout.startTs) * layout.xScale);
+            int pY = layout.plotBottom - (int) Math.round(val * layout.yScale);
+            int dX = pX - mouseX;
+            int dY = pY - mouseY;
+            int d2 = dX * dX + dY * dY;
             if (d2 < smallestD2) {
                 smallestD2 = d2;
                 closestPing = ping;
@@ -172,7 +172,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             layout.compute(g2d, statistics, getWidth(), getHeight());
-            if (layout.plotW == 0 || layout.plotH == 0) {
+            if (layout.plotWidth == 0 || layout.plotHeight == 0) {
                 drawAxes(g2d);
                 drawAxesLabels(g2d);
                 return;
@@ -207,7 +207,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
                 xStart = Math.max(layout.plotLeft, Math.min(layout.plotRight, xStart));
                 xEnd = Math.max(layout.plotLeft, Math.min(layout.plotRight, xEnd));
                 if (xEnd > xStart) {
-                    g2d.fillRect(xStart, layout.plotTop, xEnd - xStart, layout.plotH);
+                    g2d.fillRect(xStart, layout.plotTop, xEnd - xStart, layout.plotHeight);
                 }
             }
 
@@ -345,7 +345,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
     private void drawPingData(Graphics2D g2d) {
         // Use LOD if there are more pings than pixels
         double timeBetweenPings = (double) statistics.getElapsedTime() / statistics.getSent();
-        double timeBetweenPixels = (double) layout.plotTimeSpan / layout.plotW;
+        double timeBetweenPixels = (double) layout.plotTimeSpan / layout.plotWidth;
         boolean useLOD = timeBetweenPings < timeBetweenPixels;
 
         if (useLOD) {
@@ -358,7 +358,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
 
     private void drawPingsLOD(Graphics2D g2d) {
         // Arrays per on-screen x pixel
-        int len = layout.plotW + 1;
+        int len = layout.plotWidth + 1;
         int[] minVal = new int[len];
         int[] maxVal = new int[len];
         Set<Integer> timeouts = new HashSet<>();
@@ -372,7 +372,7 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         int lastIdx = -1;
         for (PingResult ping : pings) {
             int idx = (int) Math.round((ping.getTimestamp() - layout.startTs) * layout.xScale);
-            idx = Math.max(0, Math.min(layout.plotW, idx));
+            idx = Math.max(0, Math.min(layout.plotWidth, idx));
 
             if (ping.isTimeout()) {
                 timeouts.add(idx);
@@ -559,44 +559,44 @@ public class PingChart extends JPanel implements PingStatisticsListener {
         // Draw tooltip using hovered index
         long ts = hoveredPing.getTimestamp();
         int val = hoveredPing.isTimeout() ? 0 : hoveredPing.getRtt();
-        int px = layout.plotLeft + (int) Math.round((ts - layout.startTs) * layout.xScale);
-        int py = layout.plotBottom - (int) Math.round(val * layout.yScale);
-        px = Math.min(layout.plotRight, px);
-        py = Math.max(layout.plotTop, py);
+        int x = layout.plotLeft + (int) Math.round((ts - layout.startTs) * layout.xScale);
+        int y = layout.plotBottom - (int) Math.round(val * layout.yScale);
+        x = Math.min(layout.plotRight, x);
+        y = Math.max(layout.plotTop, y);
         // Draw circle around hovered ping
         g2d.setColor(ThemeColors.foreground());
-        g2d.drawOval(px - PING_TOOLTIP_RADIUS, py - PING_TOOLTIP_RADIUS, PING_TOOLTIP_RADIUS * 2,
+        g2d.drawOval(x - PING_TOOLTIP_RADIUS, y - PING_TOOLTIP_RADIUS, PING_TOOLTIP_RADIUS * 2,
                 PING_TOOLTIP_RADIUS * 2);
 
         String s = (hoveredPing.isTimeout() ? "Timeout" : val + "ms") + " " + Formatter.formatTimestampMs(ts);
         int width = layout.boldFm.stringWidth(s);
         int height = layout.boldFm.getAscent();
-        int tx = px + PING_TOOLTIP_OFFSET;
-        int ty = py - PING_TOOLTIP_OFFSET;
+        int tooltipX = x + PING_TOOLTIP_OFFSET;
+        int tooltipY = y - PING_TOOLTIP_OFFSET;
 
-        if (tx > layout.plotRight - width) {
-            tx = px - width - PING_TOOLTIP_OFFSET;
+        if (tooltipX > layout.plotRight - width) {
+            tooltipX = x - width - PING_TOOLTIP_OFFSET;
         }
-        tx = Math.max(tx, layout.plotLeft);
+        tooltipX = Math.max(tooltipX, layout.plotLeft);
 
-        ty = Math.min(ty, layout.plotBottom);
-        if (ty < height) {
-            ty = py + height + PING_TOOLTIP_OFFSET;
+        tooltipY = Math.min(tooltipY, layout.plotBottom);
+        if (tooltipY < height) {
+            tooltipY = y + height + PING_TOOLTIP_OFFSET;
         }
 
         // Draw background rectangle
         Color prev = g2d.getColor();
         g2d.setColor(getBackground());
-        g2d.fillRect(tx - X_LABEL_PAD, ty - layout.boldFm.getAscent(), width + X_LABEL_PAD * 2,
+        g2d.fillRect(tooltipX - X_LABEL_PAD, tooltipY - layout.boldFm.getAscent(), width + X_LABEL_PAD * 2,
                 layout.boldFm.getHeight() + X_LABEL_PAD);
         g2d.setColor(ThemeColors.border());
         g2d.setStroke(THIN_STROKE);
-        g2d.drawRect(tx - X_LABEL_PAD, ty - layout.boldFm.getAscent(), width + X_LABEL_PAD * 2,
+        g2d.drawRect(tooltipX - X_LABEL_PAD, tooltipY - layout.boldFm.getAscent(), width + X_LABEL_PAD * 2,
                 layout.boldFm.getHeight() + X_LABEL_PAD);
         // Draw tooltip
         g2d.setColor(prev);
         g2d.setFont(g2d.getFont().deriveFont(Font.BOLD));
-        g2d.drawString(s, tx, ty);
+        g2d.drawString(s, tooltipX, tooltipY);
     }
 
     private void rebuildXLabelTimestamps() {

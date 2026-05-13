@@ -35,7 +35,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private final Timer elapsedTimer = new Timer(1000, e -> updateElapsedLabel());
     private final PreferencesManager prefs;
     private JFrame frame;
-    private PingChart chart;
+    private PingPlot plot;
     private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel, worstLabel,
             lastLabel, elapsedLabel;
     private JTextField host;
@@ -69,11 +69,11 @@ public class PingPanel extends JPanel implements PingProcessListener {
         topPanel.add(createStatsPanel());
         topPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
 
-        chart = new PingChart(statistics);
+        plot = new PingPlot(statistics);
 
         JPanel root = new JPanel(new BorderLayout());
         root.add(topPanel, BorderLayout.NORTH);
-        root.add(chart, BorderLayout.CENTER);
+        root.add(plot, BorderLayout.CENTER);
         frame.setContentPane(root);
 
         if (prefs.hasWindowBounds()) {
@@ -222,7 +222,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private void resetStats() {
         statistics.reset();
         elapsedTimer.stop();
-        chart.reset();
+        plot.reset();
     }
 
     private void resetLabels() {
@@ -314,7 +314,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
     public void onPing(PingResult ping) {
         statistics.addPing(ping);
         updateStatsLabels();
-        chart.repaint();
+        plot.repaint();
     }
 
     private String formatPing(PingResult ping) {

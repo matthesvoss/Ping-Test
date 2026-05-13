@@ -5,8 +5,8 @@ import de.matthesvoss.pingtest.model.PingStatistics;
 
 import java.awt.*;
 
-class PingChartLayout {
-    int plotLeft, plotRight, plotTop, plotBottom, plotW, plotH;
+class PingPlotLayout {
+    int plotLeft, plotRight, plotTop, plotBottom, plotWidth, plotHeight;
     long startTs, lastPingTs, plotTimeSpan;
     double xScale, yScale;
     FontMetrics plainFm, boldFm;
@@ -24,23 +24,23 @@ class PingChartLayout {
         yTopLabelWidth = plainFm.stringWidth(yTopLabel);
         lastPingMaxWidth = boldFm.stringWidth("Timeout");
         int xLabelHeight = plainFm.getHeight();
-        int leftMargin = yTopLabelWidth + PingChart.BORDER_PAD * 2;
-        int bottomMargin = xLabelHeight + PingChart.TICK_SIZE + PingChart.BORDER_PAD;
-        int rightMargin = lastPingMaxWidth + PingChart.BORDER_PAD * 2;
-        int topMargin = PingChart.BORDER_PAD;
+        int leftMargin = yTopLabelWidth + PingPlot.BORDER_PAD * 2;
+        int bottomMargin = xLabelHeight + PingPlot.TICK_SIZE + PingPlot.BORDER_PAD;
+        int rightMargin = lastPingMaxWidth + PingPlot.BORDER_PAD * 2;
+        int topMargin = PingPlot.BORDER_PAD;
 
         plotLeft = leftMargin;
         plotTop = topMargin;
-        plotW = Math.max(0, width - leftMargin - rightMargin);
-        plotH = Math.max(0, height - topMargin - bottomMargin);
-        plotBottom = plotTop + plotH;
-        plotRight = plotLeft + plotW;
+        plotWidth = Math.max(0, width - leftMargin - rightMargin);
+        plotHeight = Math.max(0, height - topMargin - bottomMargin);
+        plotBottom = plotTop + plotHeight;
+        plotRight = plotLeft + plotWidth;
 
         startTs = statistics.getStartOfFirstSession();
         lastPingTs = statistics.getTimestampOfLastPing();
         plotTimeSpan = Math.max(lastPingTs - startTs, 0L);
 
-        xScale = plotTimeSpan > 0 ? (double) plotW / plotTimeSpan : 0.0;
-        yScale = worst > 0 ? (double) plotH / worst : 0.0;
+        xScale = plotTimeSpan > 0 ? (double) plotWidth / plotTimeSpan : 0.0;
+        yScale = worst > 0 ? (double) plotHeight / worst : 0.0;
     }
 }
