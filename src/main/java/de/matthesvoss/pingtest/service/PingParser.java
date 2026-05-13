@@ -12,26 +12,24 @@ import java.util.regex.Pattern;
 
 public class PingParser {
     // Windows
-    private static final Pattern WIN_SUCCESS_EN =
-            Pattern.compile("Reply from .*?time[=<]\\s*(\\d+(?:\\.\\d+)?)\\s*ms", Pattern.CASE_INSENSITIVE);
-    private static final Pattern WIN_SUCCESS_DE =
-            Pattern.compile("Antwort von .*?Zeit[=<]\\s*(\\d+(?:\\.\\d+)?)\\s*ms", Pattern.CASE_INSENSITIVE);
-    private static final Pattern WIN_TIMEOUT =
-            Pattern.compile("(Zeit.*berschreitung|Request timed out|transmit failed)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern WIN_SUCCESS_EN = Pattern.compile("Reply from .*?time[=<]\\s*(\\d+(?:\\.\\d+)?)" +
+            "\\s*ms", Pattern.CASE_INSENSITIVE);
+    private static final Pattern WIN_SUCCESS_DE = Pattern.compile("Antwort von .*?Zeit[=<]\\s*(\\d+(?:\\.\\d+)?)" +
+            "\\s*ms", Pattern.CASE_INSENSITIVE);
+    private static final Pattern WIN_TIMEOUT = Pattern.compile("(Zeit.*berschreitung|Request timed out|transmit " +
+            "failed)", Pattern.CASE_INSENSITIVE);
 
     // Linux
-    private static final Pattern LINUX_SUCCESS =
-            Pattern.compile("icmp_seq=(\\d+).*?(?:time|Zeit)[=<]\\s*(\\d+(?:\\.\\d+)?)\\s*ms",
-                    Pattern.CASE_INSENSITIVE);
-    private static final Pattern LINUX_TIMEOUT =
-            Pattern.compile("(timeout|unreachable|time to live exceeded)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern LINUX_NO_ANSWER_YET =
-            Pattern.compile("no answer yet for (?:icmp_)?seq=(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern LINUX_SUCCESS = Pattern.compile("icmp_seq=(\\d+).*?(?:time|Zeit)[=<]\\s*(\\d+(?:\\" +
+            ".\\d+)?)\\s*ms", Pattern.CASE_INSENSITIVE);
+    private static final Pattern LINUX_TIMEOUT = Pattern.compile("(timeout|unreachable|time to live exceeded)",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern LINUX_NO_ANSWER_YET = Pattern.compile("no answer yet for (?:icmp_)?seq=(\\d+)",
+            Pattern.CASE_INSENSITIVE);
 
     // Host not found
-    private static final Pattern HOST_NOT_FOUND =
-            Pattern.compile("(Ping request could not find host|Ping-Anforderung konnte Host|Name or service not known)",
-                    Pattern.CASE_INSENSITIVE);
+    private static final Pattern HOST_NOT_FOUND = Pattern.compile("(Ping request could not find host|Ping-Anforderung" +
+            " konnte Host|Name or service not known)", Pattern.CASE_INSENSITIVE);
 
     // Track lost sequence numbers (Linux only)
     private final Set<Integer> lostSeqs = new HashSet<>();

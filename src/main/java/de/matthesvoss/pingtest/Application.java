@@ -24,8 +24,7 @@ public class Application {
         PingController controller = new PingController();
         PingPanel gui = new PingPanel(controller, prefs);
 
-        MessageListener messageListener = (msg, type, ex) ->
-                MessageDialog.show(gui.getFrame(), msg, type, ex);
+        MessageListener messageListener = (msg, type, ex) -> MessageDialog.show(gui.getFrame(), msg, type, ex);
         gui.setMessageListener(messageListener);
 
         gui.createAndShow();

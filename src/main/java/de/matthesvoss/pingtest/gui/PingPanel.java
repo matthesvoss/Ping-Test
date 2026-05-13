@@ -116,8 +116,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
             }
         });
 
-        theme = UI.iconButton(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode", "theme", 1.0,
-                this::switchTheme);
+        theme = UI.iconButton(ThemeManager.isDarkTheme() ? "Light mode" : "Dark mode", "theme", 1.0, this::switchTheme);
 
         JPanel leftGroup = UI.panel(new FlowLayout(FlowLayout.LEFT, 6, 4), hostLabel, host, countLabel, count,
                 infinite, startStop, clear);

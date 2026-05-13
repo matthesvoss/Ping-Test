@@ -65,9 +65,7 @@ public class PingStatistics {
     }
 
     public List<PingResult> getAllPings() {
-        return sessions.stream()
-                .flatMap(s -> s.getPings().stream())
-                .collect(Collectors.toList());
+        return sessions.stream().flatMap(s -> s.getPings().stream()).collect(Collectors.toList());
     }
 
     public void addPing(PingResult ping) {

@@ -8,25 +8,13 @@ public final class MessageDialog {
     }
 
     public static void showInfo(Component parent, String message) {
-        SwingUtilities.invokeLater(() ->
-                JOptionPane.showMessageDialog(
-                        parent,
-                        message,
-                        "Information",
-                        JOptionPane.INFORMATION_MESSAGE
-                )
-        );
+        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parent, message, "Information",
+                JOptionPane.INFORMATION_MESSAGE));
     }
 
     public static void showWarning(Component parent, String message) {
-        SwingUtilities.invokeLater(() ->
-                JOptionPane.showMessageDialog(
-                        parent,
-                        message,
-                        "Warning",
-                        JOptionPane.WARNING_MESSAGE
-                )
-        );
+        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parent, message, "Warning",
+                JOptionPane.WARNING_MESSAGE));
     }
 
     public static void showError(Component parent, String message, Throwable cause) {
@@ -40,14 +28,8 @@ public final class MessageDialog {
             }
         }
         String finalMessage = message;
-        SwingUtilities.invokeLater(() ->
-                JOptionPane.showMessageDialog(
-                        parent,
-                        finalMessage,
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                )
-        );
+        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parent, finalMessage, "Error",
+                JOptionPane.ERROR_MESSAGE));
     }
 
     public static void show(Component parent, String message, MessageType type, Throwable cause) {
