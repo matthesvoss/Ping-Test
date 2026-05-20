@@ -19,25 +19,26 @@ public class PingParser {
             "\\s*ms", Pattern.CASE_INSENSITIVE);
     private static final Pattern WIN_SUCCESS_DE = Pattern.compile("Antwort von .*?Zeit[=<]\\s*(\\d+(?:\\.\\d+)?)" +
             "\\s*ms", Pattern.CASE_INSENSITIVE);
-    private static final Pattern WIN_TIMEOUT = Pattern.compile("(Zeit.*berschreitung|Request timed out|transmit " +
-            "failed)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern WIN_TIMEOUT = Pattern.compile("Zeit.*berschreitung|Request timed out|transmit " +
+            "failed", Pattern.CASE_INSENSITIVE);
 
-    // Linux
+    // Linux/MacOS
     private static final Pattern LINUX_SUCCESS = Pattern.compile("icmp_seq=(\\d+).*?(?:time|Zeit)[=<]\\s*(\\d+(?:\\" +
             ".\\d+)?)\\s*ms", Pattern.CASE_INSENSITIVE);
-    private static final Pattern LINUX_TIMEOUT = Pattern.compile("(timeout|unreachable|time to live exceeded)",
+    private static final Pattern LINUX_TIMEOUT = Pattern.compile("timeout|unreachable|time to live exceeded",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern LINUX_NO_ANSWER_YET = Pattern.compile("no answer yet for (?:icmp_)?seq=(\\d+)",
             Pattern.CASE_INSENSITIVE);
 
     // Host not found
-    private static final Pattern HOST_NOT_FOUND = Pattern.compile("(Ping request could not find host|Ping-Anforderung" +
-            " konnte Host|Name or service not known)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HOST_NOT_FOUND = Pattern.compile("Ping request could not find host|Ping-Anforderung" +
+                    " konnte Host|Name or service not known|nodename nor servname provided|bad address",
+            Pattern.CASE_INSENSITIVE);
 
     // IP address
     private final Pattern IP_ADDRESS;
 
-    // Track lost sequence numbers (Linux only)
+    // Track lost sequence numbers (Linux/MacOS only)
     private final Set<Integer> lostSeqs = new HashSet<>();
 
     PingParser(String host) {
@@ -57,7 +58,7 @@ public class PingParser {
             throw new UnknownHostException(line);
         }
 
-        // Handle "no answer yet for icmp_seq" (Linux only)
+        // Handle "no answer yet for icmp_seq" (Linux/MacOS only)
         if (!Application.IS_WINDOWS) {
             Matcher noAns = LINUX_NO_ANSWER_YET.matcher(line);
             if (noAns.find()) {
@@ -83,7 +84,7 @@ public class PingParser {
             if (m.find()) {
                 return new ParsedPingResult(new PingResult(timestamp, parseIntSafe(m.group(1))));
             }
-        } else { // Linux
+        } else { // Linux/MacOS
             Matcher m = LINUX_SUCCESS.matcher(line);
             if (m.find()) {
                 int seq = parseIntSafe(m.group(1));

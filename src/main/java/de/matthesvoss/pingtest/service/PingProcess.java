@@ -53,7 +53,7 @@ public class PingProcess {
                 return new ProcessBuilder("ping", "-w", "1000", "-n", String.valueOf(count), host);
             }
         } else {
-            // Linux: continuous by default, -c for count
+            // Linux/MacOS: continuous by default, -c for count
             if (count == -1) {
                 return new ProcessBuilder("ping", "-O", "-n", "-i", "1", "-W", "1", host);
             } else {
