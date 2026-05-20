@@ -26,7 +26,9 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.stream.Collectors;
 
 public class PingPanel extends JPanel implements PingProcessListener {
     private static final DecimalFormat LOSS_FORMAT = new DecimalFormat("0.00");
@@ -38,6 +40,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private PingPlot plot;
     private JLabel addressLabel, sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel,
             worstLabel, lastLabel, elapsedLabel;
+    private JLabel[] statsLabels;
     private JTextField host;
     private JButton startStop, clear, share, theme;
     private JPopupMenu shareMenu;
@@ -151,9 +154,10 @@ public class PingPanel extends JPanel implements PingProcessListener {
         worstLabel = UI.paddedLabel("Worst: ms");
         lastLabel = UI.paddedLabel("Last: ms");
         elapsedLabel = UI.paddedLabel("Elapsed: 00:00:00");
+        statsLabels = new JLabel[]{addressLabel, sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel,
+                averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel};
 
-        return UI.separatorPanel(new WrapLayout(FlowLayout.CENTER, 0, 0), addressLabel, sentLabel, receivedLabel,
-                lostLabel, lossLabel, bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
+        return UI.separatorPanel(new WrapLayout(FlowLayout.CENTER, 0, 0), statsLabels);
     }
 
     public JFrame getFrame() {
@@ -258,9 +262,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
 
     private void copyStatsToClipboard() {
         try {
-            String stats = String.join("\t", addressLabel.getText(), sentLabel.getText(), receivedLabel.getText(),
-                    lostLabel.getText(), lossLabel.getText(), bestLabel.getText(), averageLabel.getText(),
-                    medianLabel.getText(), worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText());
+            String stats = Arrays.stream(statsLabels).map(JLabel::getText).collect(Collectors.joining("\t"));
             Clipboard.copyToClipboard(stats);
         } catch (Exception ex) {
             messageListener.onMessage("Failed to copy statistics to clipboard", MessageType.ERROR, ex);
@@ -270,9 +272,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private void copyPingsToClipboard() {
         try {
             ArrayList<String> lines = new ArrayList<>();
-            lines.add(String.join("\t", addressLabel.getText(), sentLabel.getText(), receivedLabel.getText(),
-                    lostLabel.getText(), lossLabel.getText(), bestLabel.getText(), averageLabel.getText(),
-                    medianLabel.getText(), worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText()));
+            lines.add(Arrays.stream(statsLabels).map(JLabel::getText).collect(Collectors.joining("\t")));
             for (PingResult ping : statistics.getAllPings()) {
                 String value = ping.isTimeout() ? "Timeout" : ping.getRtt() + "ms";
                 lines.add(Formatter.formatTimestampMs(ping.getTimestamp()) + "\t" + value);
