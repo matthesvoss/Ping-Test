@@ -4,6 +4,9 @@ import de.matthesvoss.pingtest.Application;
 import de.matthesvoss.pingtest.model.PingResult;
 import de.matthesvoss.pingtest.service.exceptions.PingProcessException;
 import de.matthesvoss.pingtest.service.exceptions.UnknownHostException;
+import de.matthesvoss.pingtest.service.results.ParsedIPAddress;
+import de.matthesvoss.pingtest.service.results.ParsedLine;
+import de.matthesvoss.pingtest.service.results.ParsedPingResult;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -31,10 +34,17 @@ public class PingParser {
     private static final Pattern HOST_NOT_FOUND = Pattern.compile("(Ping request could not find host|Ping-Anforderung" +
             " konnte Host|Name or service not known)", Pattern.CASE_INSENSITIVE);
 
+    // IP address
+    private final Pattern IP_ADDRESS;
+
     // Track lost sequence numbers (Linux only)
     private final Set<Integer> lostSeqs = new HashSet<>();
 
-    public PingResult parseInputLine(String line) throws UnknownHostException {
+    PingParser(String host) {
+        IP_ADDRESS = Pattern.compile(Pattern.quote(host) + " [\\[(]([^)\\]]+)[)\\]]");
+    }
+
+    public ParsedLine parseInputLine(String line) throws UnknownHostException {
         line = line.trim();
         if (line.isEmpty()) {
             return null;
@@ -53,25 +63,25 @@ public class PingParser {
             if (noAns.find()) {
                 int seq = parseIntSafe(noAns.group(1));
                 lostSeqs.add(seq);
-                return new PingResult(timestamp, -1); // treat as lost
+                return new ParsedPingResult(new PingResult(timestamp, -1)); // treat as lost
             }
         }
 
         // Timeout / error lines
         if (WIN_TIMEOUT.matcher(line).find() || LINUX_TIMEOUT.matcher(line).find()) {
-            return new PingResult(timestamp, -1);
+            return new ParsedPingResult(new PingResult(timestamp, -1));
         }
 
         // Success lines
         if (Application.IS_WINDOWS) {
             Matcher m = WIN_SUCCESS_EN.matcher(line);
             if (m.find()) {
-                return new PingResult(timestamp, parseIntSafe(m.group(1)));
+                return new ParsedPingResult(new PingResult(timestamp, parseIntSafe(m.group(1))));
             }
 
             m = WIN_SUCCESS_DE.matcher(line);
             if (m.find()) {
-                return new PingResult(timestamp, parseIntSafe(m.group(1)));
+                return new ParsedPingResult(new PingResult(timestamp, parseIntSafe(m.group(1))));
             }
         } else { // Linux
             Matcher m = LINUX_SUCCESS.matcher(line);
@@ -83,8 +93,13 @@ public class PingParser {
                     return null;
                 }
 
-                return new PingResult(timestamp, parseIntSafe(m.group(2)));
+                return new ParsedPingResult(new PingResult(timestamp, parseIntSafe(m.group(2))));
             }
+        }
+
+        Matcher m = IP_ADDRESS.matcher(line);
+        if (m.find()) {
+            return new ParsedIPAddress(m.group(1));
         }
 
         // Unrecognized line

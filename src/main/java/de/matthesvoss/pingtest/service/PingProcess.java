@@ -1,9 +1,9 @@
 package de.matthesvoss.pingtest.service;
 
 import de.matthesvoss.pingtest.Application;
-import de.matthesvoss.pingtest.model.PingResult;
 import de.matthesvoss.pingtest.service.exceptions.PingProcessException;
 import de.matthesvoss.pingtest.service.exceptions.UnknownHostException;
+import de.matthesvoss.pingtest.service.results.ParsedLine;
 
 import javax.swing.*;
 import java.nio.charset.Charset;
@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 public class PingProcess {
     private final String host;
     private final PingProcessListener processListener;
-    private final PingParser parser = new PingParser();
+    private final PingParser parser;
     private Process pingProcess;
     private InputStreamWorker inputStreamWorker;
     private Thread errorStreamReader;
@@ -23,6 +23,7 @@ public class PingProcess {
     public PingProcess(String host, PingProcessListener processListener) {
         this.host = host;
         this.processListener = processListener;
+        this.parser = new PingParser(host);
     }
 
     public synchronized void start(int count) {
@@ -124,15 +125,15 @@ public class PingProcess {
         return t;
     }
 
-    private class InputStreamWorker extends SwingWorker<Void, PingResult> {
+    private class InputStreamWorker extends SwingWorker<Void, ParsedLine> {
         @Override
         protected Void doInBackground() {
             try (Scanner s = new Scanner(pingProcess.getInputStream(), Charset.defaultCharset().name())) {
                 while (!isCancelled() && s.hasNext()) {
                     String line = s.nextLine();
-                    PingResult ping = parser.parseInputLine(line);
-                    if (ping != null) {
-                        publish(ping);
+                    ParsedLine parsedLine = parser.parseInputLine(line);
+                    if (parsedLine != null) {
+                        publish(parsedLine);
                     }
                 }
             } catch (UnknownHostException ex) {
@@ -145,12 +146,12 @@ public class PingProcess {
         }
 
         @Override
-        protected void process(List<PingResult> chunks) {
+        protected void process(List<ParsedLine> chunks) {
             if (!running) {
                 return;
             }
-            for (PingResult ping : chunks) {
-                processListener.onPing(ping);
+            for (ParsedLine parsedLine : chunks) {
+                parsedLine.dispatch(processListener);
             }
         }
 

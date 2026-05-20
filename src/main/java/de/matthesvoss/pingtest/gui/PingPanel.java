@@ -36,8 +36,8 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private final PreferencesManager prefs;
     private JFrame frame;
     private PingPlot plot;
-    private JLabel sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel, worstLabel,
-            lastLabel, elapsedLabel;
+    private JLabel addressLabel, sentLabel, receivedLabel, lostLabel, lossLabel, bestLabel, averageLabel, medianLabel,
+            worstLabel, lastLabel, elapsedLabel;
     private JTextField host;
     private JButton startStop, clear, share, theme;
     private JPopupMenu shareMenu;
@@ -140,6 +140,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
 
     private JPanel createStatsPanel() {
         // Stats labels
+        addressLabel = UI.paddedLabel("IP address: ");
         sentLabel = UI.paddedLabel("Sent: ");
         receivedLabel = UI.paddedLabel("Received: ");
         lostLabel = UI.paddedLabel("Lost: ");
@@ -151,8 +152,8 @@ public class PingPanel extends JPanel implements PingProcessListener {
         lastLabel = UI.paddedLabel("Last: ms");
         elapsedLabel = UI.paddedLabel("Elapsed: 00:00:00");
 
-        return UI.separatorPanel(new WrapLayout(FlowLayout.CENTER, 0, 0), sentLabel, receivedLabel, lostLabel,
-                lossLabel, bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
+        return UI.separatorPanel(new WrapLayout(FlowLayout.CENTER, 0, 0), addressLabel, sentLabel, receivedLabel,
+                lostLabel, lossLabel, bestLabel, averageLabel, medianLabel, worstLabel, lastLabel, elapsedLabel);
     }
 
     public JFrame getFrame() {
@@ -242,6 +243,7 @@ public class PingPanel extends JPanel implements PingProcessListener {
     }
 
     private void resetLabels() {
+        addressLabel.setText("IP address: ");
         sentLabel.setText("Sent: ");
         receivedLabel.setText("Received: ");
         lostLabel.setText("Lost: ");
@@ -256,9 +258,9 @@ public class PingPanel extends JPanel implements PingProcessListener {
 
     private void copyStatsToClipboard() {
         try {
-            String stats = String.join("\t", sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(),
-                    lossLabel.getText(), bestLabel.getText(), averageLabel.getText(), medianLabel.getText(),
-                    worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText());
+            String stats = String.join("\t", addressLabel.getText(), sentLabel.getText(), receivedLabel.getText(),
+                    lostLabel.getText(), lossLabel.getText(), bestLabel.getText(), averageLabel.getText(),
+                    medianLabel.getText(), worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText());
             Clipboard.copyToClipboard(stats);
         } catch (Exception ex) {
             messageListener.onMessage("Failed to copy statistics to clipboard", MessageType.ERROR, ex);
@@ -268,9 +270,9 @@ public class PingPanel extends JPanel implements PingProcessListener {
     private void copyPingsToClipboard() {
         try {
             ArrayList<String> lines = new ArrayList<>();
-            lines.add(String.join("\t", sentLabel.getText(), receivedLabel.getText(), lostLabel.getText(),
-                    lossLabel.getText(), bestLabel.getText(), averageLabel.getText(), medianLabel.getText(),
-                    worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText()));
+            lines.add(String.join("\t", addressLabel.getText(), sentLabel.getText(), receivedLabel.getText(),
+                    lostLabel.getText(), lossLabel.getText(), bestLabel.getText(), averageLabel.getText(),
+                    medianLabel.getText(), worstLabel.getText(), lastLabel.getText(), elapsedLabel.getText()));
             for (PingResult ping : statistics.getAllPings()) {
                 String value = ping.isTimeout() ? "Timeout" : ping.getRtt() + "ms";
                 lines.add(Formatter.formatTimestampMs(ping.getTimestamp()) + "\t" + value);
@@ -331,6 +333,11 @@ public class PingPanel extends JPanel implements PingProcessListener {
         statistics.addPing(ping);
         updateStatsLabels();
         plot.repaint();
+    }
+
+    @Override
+    public void onIPAddress(String address) {
+        addressLabel.setText("IP address: " + address);
     }
 
     private String formatPing(PingResult ping) {
