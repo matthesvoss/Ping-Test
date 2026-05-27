@@ -10,8 +10,9 @@ A simple GUI for the `ping` command-line utility for Windows, Linux and MacOS.
 
 ## Usage
 1. Install [Java](https://www.java.com/en/download/manual.jsp) for your operating system (Java 8 or later).
-2. [Download](https://github.com/matthesvoss/Ping-Test/releases/latest) the latest PingTest.jar file.
-3. Run the JAR file by double-clicking it or by running `java -jar PingTest.jar` from the terminal in the same directory.
+2. [Download](https://github.com/matthesvoss/Ping-Test/releases/latest) the latest Ping-Test.jar file.
+3. Run the JAR file by double-clicking it or by running `java -jar Ping-Test-version.jar` from the terminal in the same
+   directory.
 
 Currently, your operating system needs to be set to English or German for the tool to work.
 If the tool does not work for you, please create an issue or a pull request.
